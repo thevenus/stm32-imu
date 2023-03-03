@@ -38,6 +38,7 @@ PUTCHAR_PROTOTYPE
 }
 
 #include "stdio.h"
+#include "mpu9250.h"
 
 /* USER CODE END Includes */
 
@@ -48,24 +49,6 @@ PUTCHAR_PROTOTYPE
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MPU9250_ADDR	(0x68)
-
-#define ACCEL_XOUT_H 	(0x3B)
-#define ACCEL_XOUT_L 	(0x3C)
-#define ACCEL_YOUT_H 	(0x3D)
-#define ACCEL_YOUT_L 	(0x3E)
-#define ACCEL_ZOUT_H 	(0x3F)
-#define ACCEL_ZOUT_L 	(0x40)
-#define TEMP_OUT_H	(0x41)
-#define TEMP_OUT_L	(0x42)
-#define GYRO_XOUT_H 	(0x43)
-#define GYRO_XOUT_L 	(0x44)
-#define GYRO_YOUT_H 	(0x45)
-#define GYRO_YOUT_L 	(0x46)
-#define GYRO_ZOUT_H 	(0x47)
-#define GYRO_ZOUT_L 	(0x48)
-#define WHO_AM_I 	(0x75)
-
 
 /* USER CODE END PD */
 
@@ -131,37 +114,11 @@ int main(void)
 	printf("Program is starting! \r\n");
 
 
-	uint8_t data;
-	GPIOB->BSRR = (uint32_t) (1 << (5 + 16));
+//	uint8_t data[2];
+//	int16_t temperature;
 
-	// start communication
-	LL_I2C_GenerateStartCondition(I2C1);
-	while (!LL_I2C_IsActiveFlag_SB(I2C1));
-
-	// send the address with write bit
-	LL_I2C_TransmitData8(I2C1, (MPU9250_ADDR << 1));
-	while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
-	LL_I2C_ClearFlag_ADDR(I2C1);
-
-	// send the register address
-	LL_I2C_TransmitData8(I2C1, WHO_AM_I);
-	while (!LL_I2C_IsActiveFlag_TXE(I2C1));
-
-	// again send the start condition
-	LL_I2C_GenerateStartCondition(I2C1);
-	while (!LL_I2C_IsActiveFlag_SB(I2C1));
-
-	// send the slave address with read bit
-	LL_I2C_TransmitData8(I2C1, (MPU9250_ADDR << 1) + 1);
-	while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
-	LL_I2C_ClearFlag_ADDR(I2C1);
-
-	data = LL_I2C_ReceiveData8(I2C1);
-
-	LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
-	LL_I2C_GenerateStopCondition(I2C1);
-
-	printf("%x\r\n", data);
+	struct MPU9250 mpu;
+	MPU9250_Init(&mpu, I2C1, GPIOB, 5);
 
 	while (1) {
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
@@ -171,6 +128,8 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+
+		printf("%f\r\n", MPU9250_Temp(&mpu));
 	}
 	/* USER CODE END 3 */
 }
