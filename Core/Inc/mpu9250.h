@@ -17,7 +17,7 @@ struct MPU_Data {
 	float x, y, z;
 };
 
-struct MPU9250 {
+struct MPU_Handle {
 	// Parameters
 	I2C_TypeDef *i2cx;
 
@@ -28,25 +28,25 @@ struct MPU9250 {
 	float t;
 };
 
-enum MPU9250_Status {
-	MPU9250_OK = 0,
-	MPU9250_ERR,
-	MPU9250_NULLPTR
+enum MPU_Status {
+	MPU_OK = 0,
+	MPU_ERR,
+	MPU_NULLPTR
 
 };
 
-enum MPU9250_Status MPU9250_Init(struct MPU9250*, I2C_TypeDef*);
-enum MPU9250_Status MPU9250_ReadReg(struct MPU9250 *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
-enum MPU9250_Status MPU9250_WriteReg(struct MPU9250 *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
-enum MPU9250_Status MPU9250_SetAccelFS(struct MPU9250 *mpu, uint8_t accel_fs);
-enum MPU9250_Status MPU9250_SetGyroFS(struct MPU9250 *mpu, uint8_t gyro_fs);
-enum MPU9250_Status MPU9250_GetSensorData(struct MPU9250 *mpu);
+enum MPU_Status MPU_Init(struct MPU_Handle*, I2C_TypeDef*);
+enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
+enum MPU_Status MPU_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
+enum MPU_Status MPU_SetAccelFS(struct MPU_Handle *mpu, uint8_t accel_fs);
+enum MPU_Status MPU_SetGyroFS(struct MPU_Handle *mpu, uint8_t gyro_fs);
+enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu);
 
-enum MPU9250_Status MPU_AK8963_ReadReg(struct MPU9250 *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
-enum MPU9250_Status MPU_AK8963_WriteReg(struct MPU9250 *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
+enum MPU_Status MPU_AK8963_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
+enum MPU_Status MPU_AK8963_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
 
 
-float MPU9250_Temp(struct MPU9250 *mpu);
+float MPU_Temp(struct MPU_Handle *mpu);
 
 
 #endif /* INC_MPU9250_H_ */

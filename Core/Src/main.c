@@ -117,18 +117,18 @@ int main(void)
 //	uint8_t data[2];
 //	int16_t temperature;
 
-	struct MPU9250 mpu;
-	MPU9250_Init(&mpu, I2C1);
-	MPU9250_SetAccelFS(&mpu, MPU9250_ACCEL_FS_2G);
-	MPU9250_SetGyroFS(&mpu, MPU9250_GYRO_FS_250DPS);
+	struct MPU_Handle mpu;
+	MPU_Init(&mpu, I2C1);
+	MPU_SetAccelFS(&mpu, MPU9250_ACCEL_FS_2G);
+	MPU_SetGyroFS(&mpu, MPU9250_GYRO_FS_250DPS);
 
 	uint8_t data = 0b00011000;
 
-	MPU9250_ReadReg(&mpu, GYRO_CONFIG, &data, 1);
+	MPU_ReadReg(&mpu, MPU9250_GYRO_CONFIG, &data, 1);
 	printf("Gyro Config: %x\r\n", data);
 	printf("Gyro Full Scale Value: %d\r\n", mpu.g.fs);
 
-	MPU9250_ReadReg(&mpu, ACCEL_CONFIG, &data, 1);
+	MPU_ReadReg(&mpu, MPU9250_ACCEL_CONFIG, &data, 1);
 	printf("Accel Config: %x\r\n", data);
 	printf("Accel Full Scale Value: %d\r\n", mpu.a.fs);
 
@@ -136,13 +136,13 @@ int main(void)
 //	printf("Accel Config: %x\r\n", data);
 
 	data = 0x0c | 0x80;
-	MPU9250_WriteReg(&mpu, I2C_SLV0_ADDR, &data, 1);
+	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_ADDR, &data, 1);
 
 	data = 0x01;
-	MPU9250_WriteReg(&mpu, I2C_SLV0_REG, &data, 1);
+	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_REG, &data, 1);
 
 	data = 0b10000001;
-	MPU9250_WriteReg(&mpu, I2C_SLV0_CTRL, &data, 1);
+	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_CTRL, &data, 1);
 
 	while (1) {
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
@@ -155,13 +155,13 @@ int main(void)
 
 		printf("START === \r\n");
 		for (int i = 0; i<127; i++) {
-			MPU9250_ReadReg(&mpu, i, &data, 1);
+			MPU_ReadReg(&mpu, i, &data, 1);
 			printf("register %x: %x\r\n", i, data);
 		}
 		printf("STOP ==== \r\n");
 
-//		printf("%f\r\n", MPU9250_Temp(&mpu));
-//		MPU9250_GetSensorData(&mpu);
+//		printf("%f\r\n", MPU_Temp(&mpu));
+//		MPU_GetSensorData(&mpu);
 	}
 	/* USER CODE END 3 */
 }
