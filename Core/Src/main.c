@@ -118,7 +118,19 @@ int main(void)
 //	int16_t temperature;
 
 	struct MPU9250 mpu;
-	MPU9250_Init(&mpu, I2C1, GPIOB, 5);
+	MPU9250_Init(&mpu, I2C1);
+	MPU9250_SetAccelFS(&mpu, MPU9250_ACCEL_FS_2G);
+	MPU9250_SetGyroFS(&mpu, MPU9250_GYRO_FS_250DPS);
+
+	uint8_t data = 0b00011000;
+
+	MPU9250_ReadReg(&mpu, GYRO_CONFIG, &data, 1);
+	printf("Gyro Config: %x\r\n", data);
+	printf("Gyro Full Scale Value: %d\r\n", mpu.g.fs);
+
+	MPU9250_ReadReg(&mpu, ACCEL_CONFIG, &data, 1);
+	printf("Accel Config: %x\r\n", data);
+	printf("Accel Full Scale Value: %d\r\n", mpu.a.fs);
 
 	while (1) {
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
@@ -129,7 +141,15 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 
-		printf("%f\r\n", MPU9250_Temp(&mpu));
+//		printf("START === \r\n");
+//		for (int i = 0; i<127; i++) {
+//			MPU9250_ReadReg(&mpu, i, &data, 1);
+//			printf("register %x: %x\r\n", i, data);
+//		}
+//		printf("STOP ==== \r\n");
+
+//		printf("%f\r\n", MPU9250_Temp(&mpu));
+		MPU9250_GetSensorData(&mpu);
 	}
 	/* USER CODE END 3 */
 }
