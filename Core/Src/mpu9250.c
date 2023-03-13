@@ -25,13 +25,11 @@ static inline void i2c_stop(struct MPU9250 *mpu)
 static inline void i2c_ack(struct MPU9250 *mpu)
 {
 	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
-
 }
 
 static inline void i2c_nack(struct MPU9250 *mpu)
 {
 	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
-
 }
 
 // rw = 0 -> write operation

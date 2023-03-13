@@ -132,6 +132,18 @@ int main(void)
 	printf("Accel Config: %x\r\n", data);
 	printf("Accel Full Scale Value: %d\r\n", mpu.a.fs);
 
+//	MPU9250_ReadReg(&mpu, I2C_SLV0_ADDR, &data, 1);
+//	printf("Accel Config: %x\r\n", data);
+
+	data = 0x0c | 0x80;
+	MPU9250_WriteReg(&mpu, I2C_SLV0_ADDR, &data, 1);
+
+	data = 0x01;
+	MPU9250_WriteReg(&mpu, I2C_SLV0_REG, &data, 1);
+
+	data = 0b10000001;
+	MPU9250_WriteReg(&mpu, I2C_SLV0_CTRL, &data, 1);
+
 	while (1) {
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
 		LL_mDelay(1000);
@@ -141,15 +153,15 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 
-//		printf("START === \r\n");
-//		for (int i = 0; i<127; i++) {
-//			MPU9250_ReadReg(&mpu, i, &data, 1);
-//			printf("register %x: %x\r\n", i, data);
-//		}
-//		printf("STOP ==== \r\n");
+		printf("START === \r\n");
+		for (int i = 0; i<127; i++) {
+			MPU9250_ReadReg(&mpu, i, &data, 1);
+			printf("register %x: %x\r\n", i, data);
+		}
+		printf("STOP ==== \r\n");
 
 //		printf("%f\r\n", MPU9250_Temp(&mpu));
-		MPU9250_GetSensorData(&mpu);
+//		MPU9250_GetSensorData(&mpu);
 	}
 	/* USER CODE END 3 */
 }
