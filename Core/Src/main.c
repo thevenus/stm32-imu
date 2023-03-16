@@ -38,7 +38,7 @@ PUTCHAR_PROTOTYPE
 }
 
 #include "stdio.h"
-#include "mpu9250.h"
+#include <mpu6500.h>
 
 /* USER CODE END Includes */
 
@@ -119,30 +119,53 @@ int main(void)
 
 	struct MPU_Handle mpu;
 	MPU_Init(&mpu, I2C1);
-	MPU_SetAccelFS(&mpu, MPU9250_ACCEL_FS_2G);
-	MPU_SetGyroFS(&mpu, MPU9250_GYRO_FS_250DPS);
+	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_4G);
+	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
 
 	uint8_t data = 0b00011000;
 
-	MPU_ReadReg(&mpu, MPU9250_GYRO_CONFIG, &data, 1);
+	MPU_ReadReg(&mpu, MPU6500_GYRO_CONFIG, &data, 1);
 	printf("Gyro Config: %x\r\n", data);
-	printf("Gyro Full Scale Value: %d\r\n", mpu.g.fs);
+	printf("Gyro Full Scale Value: %f\r\n", mpu.g.fs);
 
-	MPU_ReadReg(&mpu, MPU9250_ACCEL_CONFIG, &data, 1);
+	MPU_ReadReg(&mpu, MPU6500_ACCEL_CONFIG, &data, 1);
 	printf("Accel Config: %x\r\n", data);
-	printf("Accel Full Scale Value: %d\r\n", mpu.a.fs);
+	printf("Accel Full Scale Value: %f\r\n", mpu.a.fs);
 
-//	MPU9250_ReadReg(&mpu, I2C_SLV0_ADDR, &data, 1);
+	MPU_ReadReg(&mpu, MPU6500_INT_PIN_CFG, &data, 1);
+	printf("INT PIN Config: %x\r\n", data);
+
+//	MPU6500_ReadReg(&mpu, I2C_SLV0_ADDR, &data, 1);
 //	printf("Accel Config: %x\r\n", data);
 
-	data = 0x0c | 0x80;
-	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_ADDR, &data, 1);
+//	data = 0x0c | 0x80;
+//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_ADDR, &data, 1);
+//
+//	data = 0x01;
+//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_REG, &data, 1);
+//
+//	data = 0b10000001;
+//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_CTRL, &data, 1);
 
-	data = 0x01;
-	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_REG, &data, 1);
+//	MPU_AK8963_ReadReg(&mpu, 0x00, &data, 1);
+//	printf("AK8963 Reg 0: %d\r\n", data);
 
-	data = 0b10000001;
-	MPU_WriteReg(&mpu, MPU9250_I2C_SLV0_CTRL, &data, 1);
+//	data = 0x70;
+//	HMC_WriteReg(&mpu, 0x00, &data, 1);
+//	LL_mDelay(100);
+////
+////	HMC_ReadReg(&mpu, 0, &data, 1);
+////	printf("register %x: %x\r\n", 0, data);
+//
+//	data = 0xA0;
+//	HMC_WriteReg(&mpu, 0x01, &data, 1);
+//
+//	data = 0x00;
+//	HMC_WriteReg(&mpu, 0x02, &data, 1);
+
+	LL_mDelay(100);
+
+
 
 	while (1) {
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
@@ -160,8 +183,15 @@ int main(void)
 		}
 		printf("STOP ==== \r\n");
 
+//		printf("START Magnetometer Data === \r\n");
+//		for (int i = 0; i<13; i++) {
+//			HMC_ReadReg(&mpu, i, &data, 1);
+//			printf("register %x: %x\r\n", i, data);
+//		}
+//		printf("STOP ==== \r\n\n");
+
 //		printf("%f\r\n", MPU_Temp(&mpu));
-//		MPU_GetSensorData(&mpu);
+		MPU_GetSensorData(&mpu);
 	}
 	/* USER CODE END 3 */
 }
