@@ -48,6 +48,18 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+struct Attitude {
+	// psi = yaw, theta = pitch, phi = roll
+
+	// complementary filter output angles
+	float psi, theta, phi;
+
+	// angle estimates from accel and gyro accordingly
+	float psi_a, theta_a, phi_a;
+	float psi_g, theta_g, phi_g;
+	float psi_dot, theta_dot, phi_dot;
+
+};
 
 /* USER CODE END ET */
 

@@ -100,39 +100,8 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_TypeDef *i2cx)
 	data = 0x01;
 	MPU_WriteReg(mpu, MPU6500_PWR_MGMT_1, &data, 1);
 	LL_mDelay(10);
-	// ===========================================================================
 
-
-	// Enable bypass mode and set up the external magnetometer ===================
-//	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 1, MPU6500_INT_PIN_CFG_BYPASS_Msk);
-//	LL_mDelay(10);
-//
-//
-//	HMC_SetConfig(
-//			mpu,
-//			HMC5883_AVG_4,
-//			HMC5883_DO_30,
-//			HMC5883_NO_BIAS,
-//			HMC5883_GAIN_3,
-//			HMC5883_MODE_CONT
-//	);
-
-	//Disable bypass mode
-//	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 0, MPU6500_INT_PIN_CFG_BYPASS_Msk);
-//	LL_mDelay(10);
-	// ===========================================================================
-
-//	data = 0x20;
-//	MPU_WriteReg(mpu, MPU6500_USER_CTRL, &data, 1);
-//
-//	data = HMC5883_ADDR | 0x80;
-//	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_ADDR, &data, 1);
-//
-//	data = HMC5883_DATA;
-//	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_REG, &data, 1);
-//
-//	data = 0x80 | HMC5883_DATA_Size;
-//	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_CTRL, &data, 1);
+	// Calibrate the sensor ======================================================
 
 	return MPU_OK;
 }
@@ -261,13 +230,13 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 	mpu->g.zraw = ((int16_t)data[12] << 8) | (int16_t)data[13];
 
 	// converting raw data into physical units
-	mpu->a.x = ((float)mpu->a.xraw / 32768.0f) * mpu->a.fs;
-	mpu->a.y = ((float)mpu->a.yraw / 32768.0f) * mpu->a.fs;
-	mpu->a.z = ((float)mpu->a.zraw / 32768.0f) * mpu->a.fs;
+	mpu->a.x = ((float)mpu->a.xraw / 32768.0f) * mpu->a.fs - mpu->a.xcalib;
+	mpu->a.y = ((float)mpu->a.yraw / 32768.0f) * mpu->a.fs - mpu->a.ycalib;
+	mpu->a.z = ((float)mpu->a.zraw / 32768.0f) * mpu->a.fs - mpu->a.zcalib;
 
-	mpu->g.x = ((float)mpu->g.xraw / 32768.0f) * mpu->g.fs;
-	mpu->g.y = ((float)mpu->g.yraw / 32768.0f) * mpu->g.fs;
-	mpu->g.z = ((float)mpu->g.zraw / 32768.0f) * mpu->g.fs;
+	mpu->g.x = ((float)mpu->g.xraw / 32768.0f) * mpu->g.fs - mpu->g.xcalib;
+	mpu->g.y = ((float)mpu->g.yraw / 32768.0f) * mpu->g.fs - mpu->g.ycalib;
+	mpu->g.z = ((float)mpu->g.zraw / 32768.0f) * mpu->g.fs - mpu->g.zcalib;
 
 	// == Read magnetometer data ==
 //	HMC_ReadReg(mpu, reg_addr, pdata, count)
@@ -281,6 +250,69 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 //	printf("Gyro Z: %f\r\n", mpu->g.z);
 //
 //	printf("Temperature: %f\r\n", mpu->t);
+
+	return MPU_OK;
+}
+
+enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu)
+{
+	if (mpu == NULL)
+		return MPU_NULLPTR;
+
+	mpu->a.xcalib = 0;
+	mpu->a.ycalib = 0;
+	mpu->a.zcalib = 0;
+
+	mpu->g.xcalib = 0;
+	mpu->g.ycalib = 0;
+	mpu->g.zcalib = 0;
+
+	mpu->m.xcalib = 0;
+	mpu->m.ycalib = 0;
+	mpu->m.zcalib = 0;
+
+	float axc = 0, ayc = 0, azc = 0,
+	      gxc = 0, gyc = 0, gzc = 0;
+
+	for (uint16_t i=0; i<2000; i++) {
+		MPU_GetSensorData(mpu);
+
+		axc += mpu->a.x;
+		ayc += mpu->a.y;
+		azc += mpu->a.z - 1;
+
+		gxc += mpu->g.x;
+		gyc += mpu->g.y;
+		gzc += mpu->g.z;
+
+		LL_mDelay(1);
+	}
+
+
+	axc /= 2000;
+	ayc /= 2000;
+	azc /= 2000;
+
+	gxc /= 2000;
+	gyc /= 2000;
+	gzc /= 2000;
+
+	mpu->a.xcalib = axc;
+	mpu->a.ycalib = ayc;
+	mpu->a.zcalib = azc;
+
+	mpu->g.xcalib = gxc;
+	mpu->g.ycalib = gyc;
+	mpu->g.zcalib = gzc;
+
+	printf("axcalib: %f\r\n", mpu->a.xcalib);
+	printf("aycalib: %f\r\n", mpu->a.ycalib);
+	printf("azcalib: %f\r\n", mpu->a.zcalib);
+	printf("az: %f\r\n", mpu->a.z);
+
+	printf("gxcalib: %f\r\n", mpu->g.xcalib);
+	printf("gycalib: %f\r\n", mpu->g.ycalib);
+	printf("gzcalib: %f\r\n", mpu->g.zcalib);
 
 	return MPU_OK;
 }

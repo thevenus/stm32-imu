@@ -13,8 +13,10 @@
 
 struct MPU_Data {
 	int16_t xraw, yraw, zraw;
-	float fs;
 	float x, y, z;
+	float xcalib, ycalib, zcalib;
+
+	float fs;
 };
 
 struct MPU_Handle {
@@ -41,6 +43,7 @@ enum MPU_Status MPU_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *
 enum MPU_Status MPU_WriteRegBit(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t data, uint8_t mask);
 enum MPU_Status MPU_SetAccelFS(struct MPU_Handle *mpu, uint8_t accel_fs);
 enum MPU_Status MPU_SetGyroFS(struct MPU_Handle *mpu, uint8_t gyro_fs);
+enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu);
 float MPU_Temp(struct MPU_Handle *mpu);
 enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu);
 
