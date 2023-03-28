@@ -24,6 +24,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
+#include "math.h"
+#include "mpu6500.h"
+#include "IIRFilter.h"
+
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
@@ -37,10 +42,6 @@ PUTCHAR_PROTOTYPE
 	return ch;
 }
 
-#include "stdio.h"
-#include "math.h"
-#include <mpu6500.h>
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +53,9 @@ PUTCHAR_PROTOTYPE
 /* USER CODE BEGIN PD */
 #define PI 3.14159265f
 #define G_MPS2 9.81f
+
+#define LED_TOGGLE_RATE_HZ 5
+#define MPU_SAMPLE_RATE_HZ 1000
 
 /* USER CODE END PD */
 
@@ -75,14 +79,12 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void toggle_led_and_wait()
+void toggle_led()
 {
 	if ((GPIOC->IDR & (1 << 13)))
 		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
 	else
 		GPIOC->BSRR = (uint32_t) (1 << 13);
-
-	LL_mDelay(10);
 }
 
 void print_mpu_all_regs(struct MPU_Handle *mpu)
@@ -143,44 +145,64 @@ int main(void)
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
 	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
 	LL_mDelay(100);
-
 	MPU_Calibrate(&mpu);
 
-	uint32_t timestamp;
+	struct IIRFilter theta_filter;
+	struct IIRFilter phi_filter;
+	IIR_Init(&theta_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15Hz
+	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
+
+	uint32_t timerLED = HAL_GetTick();
+	uint32_t timerMPU = HAL_GetTick();
 
 	while (1) {
-		toggle_led_and_wait();
+		if (HAL_GetTick()-timerLED > 1000 / LED_TOGGLE_RATE_HZ) {
+			toggle_led();
+			timerLED = HAL_GetTick();
+		}
+
+		if (HAL_GetTick()-timerMPU > 1000 / MPU_SAMPLE_RATE_HZ) {
+			MPU_GetSensorData(&mpu);
+
+			// calculate pitch and roll from accel
+			angles.theta_a = atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
+			angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
+
+			// filter accel theta calculation
+			angles.theta_a = IIR_Update(&theta_filter, angles.theta_a);
+			angles.phi_a = IIR_Update(&phi_filter, angles.phi_a);
+
+			// convert bodyframe gyro rates into euler frame gyro rate
+			angles.theta_dot = -(mpu.g.y * cos(angles.phi) - mpu.g.z * sin(angles.phi));
+			angles.phi_dot = -(mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta));
+
+			// calculate angle from gyro by integrating
+			angles.theta_g = angles.theta + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.theta_dot;
+			angles.phi_g = angles.phi + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.phi_dot;
+
+			// complementary filter
+			float alpha = 0.05;
+			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
+			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
+
+			printf("%f,%f,%f,%f\r\n",
+				angles.theta * 180 / PI,
+				angles.phi * 180/PI,
+				angles.theta_a * 180 / PI,
+				angles.phi_a * 180 / PI
+			);
+
+			timerMPU=HAL_GetTick();
+		}
+
 //		print_mpu_all_regs(&mpu);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-		timestamp = HAL_GetTick();
-		MPU_GetSensorData(&mpu);
 
-		// calculate pitch and roll from accel
-		angles.theta_a = atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
-		angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
 
-		// calculate pitch and roll from gyro
-		angles.theta_dot = -(mpu.g.y * cos(angles.phi) - mpu.g.z * sin(angles.phi));
-		angles.phi_dot = -(mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta));
 
-		angles.theta_g = angles.theta + ((float) (HAL_GetTick() - timestamp) / 1000.0f) * angles.theta_dot;
-		angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timestamp) / 1000.0f) * angles.phi_dot;
 
-		timestamp = HAL_GetTick();
-
-		// complementary filter
-		float alpha = 0.02;
-		angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
-		angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
-
-		printf("%f,%f,%f,%f\r\n",
-			angles.theta * 180 / PI,
-			angles.theta_dot * 180 / PI,
-			angles.theta_a * 180 / PI,
-			angles.theta_g * 180 / PI
-		);
 	}
 	/* USER CODE END 3 */
 }
