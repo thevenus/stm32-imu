@@ -11,7 +11,8 @@
 #ifndef INC_IIRFILTER_H_
 #define INC_IIRFILTER_H_
 
-struct IIRFilter {
+struct IIRFilter
+{
 	float out[3];
 	float in[3];
 

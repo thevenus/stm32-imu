@@ -119,9 +119,74 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 	i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_WRITE);
 	i2c_send_data(mpu, &reg_addr, 1);
 	i2c_start(mpu);
-	i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
-	i2c_recv_data(mpu, pdata, count);
-	i2c_stop(mpu);
+
+	if (count == 1) {
+		/* Send address and clear ACK bit before clearing ADDR */
+		LL_I2C_TransmitData8(mpu->i2cx, (MPU6500_ADDR << 1)+MPU6500_READ);
+		while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx));
+		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
+		LL_I2C_ClearFlag_ADDR(mpu->i2cx);
+
+		/* Program stop bit */
+		LL_I2C_GenerateStopCondition(mpu->i2cx);
+
+		/* Read DR after RXNE = 1 */
+		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+		pdata[0] = LL_I2C_ReceiveData8(mpu->i2cx);
+	} else if (count == 2) {
+		/* Set POS and ACK */
+		LL_I2C_EnableBitPOS(mpu->i2cx);
+		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
+
+		/* Send address and clear ADDR */
+		i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
+
+		/* Clear ACK */
+		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
+
+		/* Wait for BTF=1 */
+		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx));
+
+		/* Program STOP */
+		LL_I2C_GenerateStopCondition(mpu->i2cx);
+
+		/* Read DR twice */
+		pdata[0] = LL_I2C_ReceiveData8(mpu->i2cx);
+		pdata[1] = LL_I2C_ReceiveData8(mpu->i2cx);
+	} else if (count > 2) {
+		/* Set ACK */
+		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
+
+		/* Send address and clear ADDR */
+		i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
+
+		/* Receive data until last 3 bytes remain */
+		for (uint8_t i=0; i < count-3; i++) {
+			while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+			pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
+		}
+
+		/* Wait for RXNE=1 */
+		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx));
+
+		/* Clear ACK */
+		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
+
+		/* Read DataN-2 in DR => This will launch the DataN reception in the shift register */
+		pdata[count-3] = LL_I2C_ReceiveData8(mpu->i2cx);
+
+		/* Program STOP */
+		LL_I2C_GenerateStopCondition(mpu->i2cx);
+
+		/* Read DataN-1 */
+		pdata[count-2] = LL_I2C_ReceiveData8(mpu->i2cx);
+
+		/* Wait for RXNE = 1 and read DataN */
+		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+		pdata[count-1] = LL_I2C_ReceiveData8(mpu->i2cx);
+	} else {
+		return MPU_ERR;
+	}
 
 	return MPU_OK;
 }
@@ -307,14 +372,14 @@ enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu)
 	mpu->g.ycalib = gyc;
 	mpu->g.zcalib = gzc;
 
-	printf("axcalib: %f\r\n", mpu->a.xcalib);
-	printf("aycalib: %f\r\n", mpu->a.ycalib);
-	printf("azcalib: %f\r\n", mpu->a.zcalib);
-	printf("az: %f\r\n", mpu->a.z);
-
-	printf("gxcalib: %f\r\n", mpu->g.xcalib);
-	printf("gycalib: %f\r\n", mpu->g.ycalib);
-	printf("gzcalib: %f\r\n", mpu->g.zcalib);
+//	printf("axcalib: %f\r\n", mpu->a.xcalib);
+//	printf("aycalib: %f\r\n", mpu->a.ycalib);
+//	printf("azcalib: %f\r\n", mpu->a.zcalib);
+//	printf("az: %f\r\n", mpu->a.z);
+//
+//	printf("gxcalib: %f\r\n", mpu->g.xcalib);
+//	printf("gycalib: %f\r\n", mpu->g.ycalib);
+//	printf("gzcalib: %f\r\n", mpu->g.zcalib);
 
 	return MPU_OK;
 }

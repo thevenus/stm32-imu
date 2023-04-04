@@ -55,7 +55,7 @@ PUTCHAR_PROTOTYPE
 #define G_MPS2 9.81f
 
 #define LED_TOGGLE_RATE_HZ 5
-#define MPU_SAMPLE_RATE_HZ 1000
+#define MPU_SAMPLE_RATE_HZ 500
 
 /* USER CODE END PD */
 
@@ -67,7 +67,7 @@ PUTCHAR_PROTOTYPE
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-struct Attitude angles = {0};
+struct Attitude angles = { 0 };
 
 /* USER CODE END PV */
 
@@ -132,15 +132,10 @@ int main(void)
 	MX_I2C1_Init();
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
-
-	/* USER CODE END 2 */
-
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
-
-	printf("Program is starting! \r\n");
-
 	struct MPU_Handle mpu;
+
+	LL_mDelay(1000);
+
 	MPU_Init(&mpu, I2C1);
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
 	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
@@ -152,16 +147,23 @@ int main(void)
 	IIR_Init(&theta_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15Hz
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
+	/* USER CODE END 2 */
+
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
+
+	printf("Program is starting! \r\n");
+
 	uint32_t timerLED = HAL_GetTick();
 	uint32_t timerMPU = HAL_GetTick();
 
 	while (1) {
-		if (HAL_GetTick()-timerLED > 1000 / LED_TOGGLE_RATE_HZ) {
+		if (HAL_GetTick() - timerLED > 1000 / LED_TOGGLE_RATE_HZ) {
 			toggle_led();
 			timerLED = HAL_GetTick();
 		}
 
-		if (HAL_GetTick()-timerMPU > 1000 / MPU_SAMPLE_RATE_HZ) {
+		if (HAL_GetTick() - timerMPU > 1000 / MPU_SAMPLE_RATE_HZ) {
 			MPU_GetSensorData(&mpu);
 
 			// calculate pitch and roll from accel
@@ -177,8 +179,8 @@ int main(void)
 			angles.phi_dot = -(mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta));
 
 			// calculate angle from gyro by integrating
-			angles.theta_g = angles.theta + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.theta_dot;
-			angles.phi_g = angles.phi + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.phi_dot;
+			angles.theta_g = angles.theta + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
+			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
 
 			// complementary filter
 			float alpha = 0.05;
@@ -187,21 +189,16 @@ int main(void)
 
 			printf("%f,%f,%f,%f\r\n",
 				angles.theta * 180 / PI,
-				angles.phi * 180/PI,
+				angles.phi * 180 / PI,
 				angles.theta_a * 180 / PI,
 				angles.phi_a * 180 / PI
 			);
 
-			timerMPU=HAL_GetTick();
+			timerMPU = HAL_GetTick();
 		}
-
-//		print_mpu_all_regs(&mpu);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-
-
-
 
 	}
 	/* USER CODE END 3 */
@@ -216,22 +213,15 @@ void SystemClock_Config(void)
 	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
 	RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
 
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_RCC_PWR_CLK_ENABLE();
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
-
 	/** Initializes the RCC Oscillators according to the specified parameters
 	 * in the RCC_OscInitTypeDef structure.
 	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 25;
-	RCC_OscInitStruct.PLL.PLLN = 150;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 4;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
 		Error_Handler();
 	}

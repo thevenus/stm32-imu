@@ -11,7 +11,8 @@
 #include <mpu6500_reg.h>
 #include "main.h"
 
-struct MPU_Data {
+struct MPU_Data
+{
 	int16_t xraw, yraw, zraw;
 	float x, y, z;
 	float xcalib, ycalib, zcalib;
@@ -19,7 +20,8 @@ struct MPU_Data {
 	float fs;
 };
 
-struct MPU_Handle {
+struct MPU_Handle
+{
 	// Parameters
 	I2C_TypeDef *i2cx;
 
@@ -30,10 +32,9 @@ struct MPU_Handle {
 	float t;
 };
 
-enum MPU_Status {
-	MPU_OK = 0,
-	MPU_ERR,
-	MPU_NULLPTR
+enum MPU_Status
+{
+	MPU_OK = 0, MPU_ERR, MPU_NULLPTR
 
 };
 
@@ -46,7 +47,6 @@ enum MPU_Status MPU_SetGyroFS(struct MPU_Handle *mpu, uint8_t gyro_fs);
 enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu);
 float MPU_Temp(struct MPU_Handle *mpu);
 enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu);
-
 
 // HMC5883L Magnetometer functions
 enum MPU_Status HMC_SetConfig(struct MPU_Handle *mpu, uint8_t avg, uint8_t drate, uint8_t bias, uint8_t gain, uint8_t mode);
@@ -62,8 +62,5 @@ enum MPU_Status HMC_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *
 // set gain
 
 // set Mode
-
-
-
 
 #endif /* INC_MPU6500_H_ */

@@ -8,7 +8,4 @@
 #ifndef INC_HMC5883_H_
 #define INC_HMC5883_H_
 
-
-
-
 #endif /* INC_HMC5883_H_ */
