@@ -24,6 +24,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
+#include "math.h"
+#include "mpu6500.h"
+#include "IIRFilter.h"
+
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
@@ -37,9 +42,6 @@ PUTCHAR_PROTOTYPE
 	return ch;
 }
 
-#include "stdio.h"
-#include <mpu6500.h>
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +51,11 @@ PUTCHAR_PROTOTYPE
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define PI 3.14159265f
+#define G_MPS2 9.81f
+
+#define LED_TOGGLE_RATE_HZ 5
+#define MPU_SAMPLE_RATE_HZ 1000
 
 /* USER CODE END PD */
 
@@ -60,6 +67,7 @@ PUTCHAR_PROTOTYPE
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+struct Attitude angles = {0};
 
 /* USER CODE END PV */
 
@@ -71,6 +79,25 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void toggle_led()
+{
+	if ((GPIOC->IDR & (1 << 13)))
+		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
+	else
+		GPIOC->BSRR = (uint32_t) (1 << 13);
+}
+
+void print_mpu_all_regs(struct MPU_Handle *mpu)
+{
+	uint8_t data;
+
+	printf("START === \r\n");
+	for (int i = 0; i < 127; i++) {
+		MPU_ReadReg(mpu, i, &data, 1);
+		printf("register %x: %x\r\n", i, data);
+	}
+	printf("STOP ==== \r\n");
+}
 
 /* USER CODE END 0 */
 
@@ -113,85 +140,69 @@ int main(void)
 
 	printf("Program is starting! \r\n");
 
-
-//	uint8_t data[2];
-//	int16_t temperature;
-
 	struct MPU_Handle mpu;
 	MPU_Init(&mpu, I2C1);
-	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_4G);
+	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
 	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
-
-	uint8_t data = 0b00011000;
-
-	MPU_ReadReg(&mpu, MPU6500_GYRO_CONFIG, &data, 1);
-	printf("Gyro Config: %x\r\n", data);
-	printf("Gyro Full Scale Value: %f\r\n", mpu.g.fs);
-
-	MPU_ReadReg(&mpu, MPU6500_ACCEL_CONFIG, &data, 1);
-	printf("Accel Config: %x\r\n", data);
-	printf("Accel Full Scale Value: %f\r\n", mpu.a.fs);
-
-	MPU_ReadReg(&mpu, MPU6500_INT_PIN_CFG, &data, 1);
-	printf("INT PIN Config: %x\r\n", data);
-
-//	MPU6500_ReadReg(&mpu, I2C_SLV0_ADDR, &data, 1);
-//	printf("Accel Config: %x\r\n", data);
-
-//	data = 0x0c | 0x80;
-//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_ADDR, &data, 1);
-//
-//	data = 0x01;
-//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_REG, &data, 1);
-//
-//	data = 0b10000001;
-//	MPU_WriteReg(&mpu, MPU6500_I2C_SLV0_CTRL, &data, 1);
-
-//	MPU_AK8963_ReadReg(&mpu, 0x00, &data, 1);
-//	printf("AK8963 Reg 0: %d\r\n", data);
-
-//	data = 0x70;
-//	HMC_WriteReg(&mpu, 0x00, &data, 1);
-//	LL_mDelay(100);
-////
-////	HMC_ReadReg(&mpu, 0, &data, 1);
-////	printf("register %x: %x\r\n", 0, data);
-//
-//	data = 0xA0;
-//	HMC_WriteReg(&mpu, 0x01, &data, 1);
-//
-//	data = 0x00;
-//	HMC_WriteReg(&mpu, 0x02, &data, 1);
-
 	LL_mDelay(100);
+	MPU_Calibrate(&mpu);
 
+	struct IIRFilter theta_filter;
+	struct IIRFilter phi_filter;
+	IIR_Init(&theta_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15Hz
+	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
+	uint32_t timerLED = HAL_GetTick();
+	uint32_t timerMPU = HAL_GetTick();
 
 	while (1) {
-		GPIOC->BSRR = (uint32_t) (1 << (13 + 16));
-		LL_mDelay(1000);
-		GPIOC->BSRR = (uint32_t) (1 << 13);
-		LL_mDelay(1000);
+		if (HAL_GetTick()-timerLED > 1000 / LED_TOGGLE_RATE_HZ) {
+			toggle_led();
+			timerLED = HAL_GetTick();
+		}
+
+		if (HAL_GetTick()-timerMPU > 1000 / MPU_SAMPLE_RATE_HZ) {
+			MPU_GetSensorData(&mpu);
+
+			// calculate pitch and roll from accel
+			angles.theta_a = atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
+			angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
+
+			// filter accel theta calculation
+			angles.theta_a = IIR_Update(&theta_filter, angles.theta_a);
+			angles.phi_a = IIR_Update(&phi_filter, angles.phi_a);
+
+			// convert bodyframe gyro rates into euler frame gyro rate
+			angles.theta_dot = -(mpu.g.y * cos(angles.phi) - mpu.g.z * sin(angles.phi));
+			angles.phi_dot = -(mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta));
+
+			// calculate angle from gyro by integrating
+			angles.theta_g = angles.theta + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.theta_dot;
+			angles.phi_g = angles.phi + ((float)(HAL_GetTick()-timerMPU) / 1000.0f) * angles.phi_dot;
+
+			// complementary filter
+			float alpha = 0.05;
+			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
+			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
+
+			printf("%f,%f,%f,%f\r\n",
+				angles.theta * 180 / PI,
+				angles.phi * 180/PI,
+				angles.theta_a * 180 / PI,
+				angles.phi_a * 180 / PI
+			);
+
+			timerMPU=HAL_GetTick();
+		}
+
+//		print_mpu_all_regs(&mpu);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
 
-		printf("START === \r\n");
-		for (int i = 0; i<127; i++) {
-			MPU_ReadReg(&mpu, i, &data, 1);
-			printf("register %x: %x\r\n", i, data);
-		}
-		printf("STOP ==== \r\n");
 
-//		printf("START Magnetometer Data === \r\n");
-//		for (int i = 0; i<13; i++) {
-//			HMC_ReadReg(&mpu, i, &data, 1);
-//			printf("register %x: %x\r\n", i, data);
-//		}
-//		printf("STOP ==== \r\n\n");
 
-//		printf("%f\r\n", MPU_Temp(&mpu));
-		MPU_GetSensorData(&mpu);
+
 	}
 	/* USER CODE END 3 */
 }
