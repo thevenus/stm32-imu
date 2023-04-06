@@ -26,7 +26,10 @@
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "math.h"
+
+// Sensor libraries
 #include "mpu6500.h"
+#include "bmp280.h"
 #include "IIRFilter.h"
 
 #ifdef __GNUC__
@@ -38,7 +41,8 @@
 PUTCHAR_PROTOTYPE
 {
 	USART2->DR = (uint8_t) ch;
-	while (!LL_USART_IsActiveFlag_TXE(USART2));
+	while (!LL_USART_IsActiveFlag_TXE(USART2))
+		;
 	return ch;
 }
 
@@ -132,10 +136,10 @@ int main(void)
 	MX_I2C1_Init();
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
+	LL_mDelay(1000); // wait some time for the sensors to stabilize
+
+	// Setting up MPU and its filters
 	struct MPU_Handle mpu;
-
-	LL_mDelay(1000);
-
 	MPU_Init(&mpu, I2C1);
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
 	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
@@ -147,6 +151,23 @@ int main(void)
 	IIR_Init(&theta_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15Hz
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
+	// Setting up BMP280
+	struct bmp280_dev bmp;
+	struct bmp280_config conf;
+	struct bmp280_uncomp_data ucomp_data;
+	double pres;
+
+	bmp.dev_id = BMP280_I2C_ADDR_PRIM;
+	bmp.intf = BMP280_I2C_INTF;
+	bmp280_init(&bmp, I2C1);
+
+	bmp280_get_config(&conf, &bmp);
+
+	conf.filter = BMP280_FILTER_COEFF_2;
+	conf.odr = BMP280_ODR_1000_MS;
+	bmp280_set_config(&conf, &bmp);
+	bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -156,9 +177,10 @@ int main(void)
 
 	uint32_t timerLED = HAL_GetTick();
 	uint32_t timerMPU = HAL_GetTick();
+	uint32_t timerBMP = HAL_GetTick();
 
 	while (1) {
-		if (HAL_GetTick() - timerLED > 1000 / LED_TOGGLE_RATE_HZ) {
+		if (HAL_GetTick() - timerLED > 200) {
 			toggle_led();
 			timerLED = HAL_GetTick();
 		}
@@ -187,14 +209,17 @@ int main(void)
 			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
 			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
 
-			printf("%f,%f,%f,%f\r\n",
-				angles.theta * 180 / PI,
-				angles.phi * 180 / PI,
-				angles.theta_a * 180 / PI,
-				angles.phi_a * 180 / PI
-			);
+//			printf("%f,%f,%f,%f\r\n", angles.theta * 180 / PI, angles.phi * 180 / PI, angles.theta_a * 180 / PI, angles.phi_a * 180 / PI);
 
 			timerMPU = HAL_GetTick();
+		}
+
+		if (HAL_GetTick()-timerBMP > 1000) {
+			bmp280_get_uncomp_data(&ucomp_data, &bmp);
+			bmp280_get_comp_pres_double(&pres, ucomp_data.uncomp_press, &bmp);
+			printf("%f\r\n", pres);
+
+			timerBMP = HAL_GetTick();
 		}
 		/* USER CODE END WHILE */
 

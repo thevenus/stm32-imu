@@ -42,8 +42,9 @@ static inline void i2c_send_addr(struct MPU_Handle *mpu, uint8_t address, uint8_
 	if (mpu == NULL)
 		return;
 
-	LL_I2C_TransmitData8(mpu->i2cx, (address << 1)+rw);
-	while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx));
+	LL_I2C_TransmitData8(mpu->i2cx, (address << 1) + rw);
+	while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx))
+		;
 	LL_I2C_ClearFlag_ADDR(mpu->i2cx);
 }
 
@@ -56,7 +57,8 @@ static inline void i2c_send_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t
 
 	for (uint8_t i = 0; i < count; i++) {
 		LL_I2C_TransmitData8(mpu->i2cx, pdata[i]);
-		while (!LL_I2C_IsActiveFlag_TXE(mpu->i2cx));
+		while (!LL_I2C_IsActiveFlag_TXE(mpu->i2cx))
+			;
 	}
 }
 
@@ -67,14 +69,15 @@ static inline void i2c_recv_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t
 	if (pdata == NULL)
 		return;
 
-	for (uint8_t i=0; i < count; i++) {
+	for (uint8_t i = 0; i < count; i++) {
 		if (i < count - 1) {
 			i2c_ack(mpu);
 		} else {
 			i2c_nack(mpu);
 		}
 
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
+			;
 		pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
 	}
 }
@@ -122,8 +125,9 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 
 	if (count == 1) {
 		/* Send address and clear ACK bit before clearing ADDR */
-		LL_I2C_TransmitData8(mpu->i2cx, (MPU6500_ADDR << 1)+MPU6500_READ);
-		while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx));
+		LL_I2C_TransmitData8(mpu->i2cx, (MPU6500_ADDR << 1) + MPU6500_READ);
+		while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx))
+			;
 		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
 		LL_I2C_ClearFlag_ADDR(mpu->i2cx);
 
@@ -131,7 +135,8 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 		LL_I2C_GenerateStopCondition(mpu->i2cx);
 
 		/* Read DR after RXNE = 1 */
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
+			;
 		pdata[0] = LL_I2C_ReceiveData8(mpu->i2cx);
 	} else if (count == 2) {
 		/* Set POS and ACK */
@@ -145,7 +150,8 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
 
 		/* Wait for BTF=1 */
-		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx));
+		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx))
+			;
 
 		/* Program STOP */
 		LL_I2C_GenerateStopCondition(mpu->i2cx);
@@ -161,29 +167,32 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 		i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
 
 		/* Receive data until last 3 bytes remain */
-		for (uint8_t i=0; i < count-3; i++) {
-			while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+		for (uint8_t i = 0; i < count - 3; i++) {
+			while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
+				;
 			pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
 		}
 
 		/* Wait for RXNE=1 */
-		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx));
+		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx))
+			;
 
 		/* Clear ACK */
 		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
 
 		/* Read DataN-2 in DR => This will launch the DataN reception in the shift register */
-		pdata[count-3] = LL_I2C_ReceiveData8(mpu->i2cx);
+		pdata[count - 3] = LL_I2C_ReceiveData8(mpu->i2cx);
 
 		/* Program STOP */
 		LL_I2C_GenerateStopCondition(mpu->i2cx);
 
 		/* Read DataN-1 */
-		pdata[count-2] = LL_I2C_ReceiveData8(mpu->i2cx);
+		pdata[count - 2] = LL_I2C_ReceiveData8(mpu->i2cx);
 
 		/* Wait for RXNE = 1 and read DataN */
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
-		pdata[count-1] = LL_I2C_ReceiveData8(mpu->i2cx);
+		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
+			;
+		pdata[count - 1] = LL_I2C_ReceiveData8(mpu->i2cx);
 	} else {
 		return MPU_ERR;
 	}
@@ -243,7 +252,7 @@ enum MPU_Status MPU_SetAccelFS(struct MPU_Handle *mpu, uint8_t accel_fs)
 		for (uint8_t i = 0; i < accel_fs; i++) {
 			fs <<= 1; // multiply with 2
 		}
-		mpu->a.fs = (float)fs;
+		mpu->a.fs = (float) fs;
 		return MPU_OK;
 	}
 
@@ -260,7 +269,7 @@ enum MPU_Status MPU_SetGyroFS(struct MPU_Handle *mpu, uint8_t gyro_fs)
 		for (uint8_t i = 0; i < gyro_fs; i++) {
 			fs <<= 1; // multiply with 2
 		}
-		mpu->g.fs = (float)fs;
+		mpu->g.fs = (float) fs;
 		return MPU_OK;
 	}
 
@@ -274,9 +283,9 @@ float MPU_Temp(struct MPU_Handle *mpu)
 
 	MPU_ReadReg(mpu, MPU6500_TEMP_OUT_H, data, 2);
 
-	temperature = ((int16_t)data[0] << 8) | (int16_t)data[1];
+	temperature = ((int16_t) data[0] << 8) | (int16_t) data[1];
 
-	return mpu->t = (float)temperature/333.87f + 21.0f;
+	return mpu->t = (float) temperature / 333.87f + 21.0f;
 }
 
 enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
@@ -286,24 +295,24 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 
 	// == Read accel, gyro, and temperature data ==
 	MPU_ReadReg(mpu, start_reg, data, 14);
-	mpu->a.xraw = ((int16_t)data[0] << 8) | (int16_t)data[1];
-	mpu->a.yraw = ((int16_t)data[2] << 8) | (int16_t)data[3];
-	mpu->a.zraw = ((int16_t)data[4] << 8) | (int16_t)data[5];
+	mpu->a.xraw = ((int16_t) data[0] << 8) | (int16_t) data[1];
+	mpu->a.yraw = ((int16_t) data[2] << 8) | (int16_t) data[3];
+	mpu->a.zraw = ((int16_t) data[4] << 8) | (int16_t) data[5];
 
-	mpu->t = (float)(((int16_t)data[6] << 8) | (int16_t)data[7]) / 333.87f + 21.0f;
+	mpu->t = (float) (((int16_t) data[6] << 8) | (int16_t) data[7]) / 333.87f + 21.0f;
 
-	mpu->g.xraw = ((int16_t)data[8] << 8)  | (int16_t)data[9];
-	mpu->g.yraw = ((int16_t)data[10] << 8) | (int16_t)data[11];
-	mpu->g.zraw = ((int16_t)data[12] << 8) | (int16_t)data[13];
+	mpu->g.xraw = ((int16_t) data[8] << 8) | (int16_t) data[9];
+	mpu->g.yraw = ((int16_t) data[10] << 8) | (int16_t) data[11];
+	mpu->g.zraw = ((int16_t) data[12] << 8) | (int16_t) data[13];
 
 	// converting raw data into physical units
-	mpu->a.x = ((float)mpu->a.xraw / 32768.0f) * mpu->a.fs - mpu->a.xcalib;
-	mpu->a.y = ((float)mpu->a.yraw / 32768.0f) * mpu->a.fs - mpu->a.ycalib;
-	mpu->a.z = ((float)mpu->a.zraw / 32768.0f) * mpu->a.fs - mpu->a.zcalib;
+	mpu->a.x = ((float) mpu->a.xraw / 32768.0f) * mpu->a.fs - mpu->a.xcalib;
+	mpu->a.y = ((float) mpu->a.yraw / 32768.0f) * mpu->a.fs - mpu->a.ycalib;
+	mpu->a.z = ((float) mpu->a.zraw / 32768.0f) * mpu->a.fs - mpu->a.zcalib;
 
-	mpu->g.x = (((float)mpu->g.xraw / 32768.0f) * mpu->g.fs - mpu->g.xcalib) * DEG_TO_RAD;
-	mpu->g.y = (((float)mpu->g.yraw / 32768.0f) * mpu->g.fs - mpu->g.ycalib) * DEG_TO_RAD;
-	mpu->g.z = (((float)mpu->g.zraw / 32768.0f) * mpu->g.fs - mpu->g.zcalib) * DEG_TO_RAD;
+	mpu->g.x = (((float) mpu->g.xraw / 32768.0f) * mpu->g.fs - mpu->g.xcalib) * DEG_TO_RAD;
+	mpu->g.y = (((float) mpu->g.yraw / 32768.0f) * mpu->g.fs - mpu->g.ycalib) * DEG_TO_RAD;
+	mpu->g.z = (((float) mpu->g.zraw / 32768.0f) * mpu->g.fs - mpu->g.zcalib) * DEG_TO_RAD;
 
 	// == Read magnetometer data ==
 //	HMC_ReadReg(mpu, reg_addr, pdata, count)
@@ -338,10 +347,9 @@ enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu)
 	mpu->m.ycalib = 0;
 	mpu->m.zcalib = 0;
 
-	float axc = 0, ayc = 0, azc = 0,
-	      gxc = 0, gyc = 0, gzc = 0;
+	float axc = 0, ayc = 0, azc = 0, gxc = 0, gyc = 0, gzc = 0;
 
-	for (uint16_t i=0; i<2000; i++) {
+	for (uint16_t i = 0; i < 2000; i++) {
 		MPU_GetSensorData(mpu);
 
 		axc += mpu->a.x;
@@ -354,7 +362,6 @@ enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu)
 
 		LL_mDelay(1);
 	}
-
 
 	axc /= 2000;
 	ayc /= 2000;
@@ -404,41 +411,41 @@ enum MPU_Status HMC_SetConfig(struct MPU_Handle *mpu, uint8_t avg, uint8_t drate
 
 	// Save the gain value
 	switch (gain) {
-		case 0:
-			mpu->m.fs = 0.88;
-			break;
+	case 0:
+		mpu->m.fs = 0.88;
+		break;
 
-		case 1:
-			mpu->m.fs = 1.3;
-			break;
+	case 1:
+		mpu->m.fs = 1.3;
+		break;
 
-		case 2:
-			mpu->m.fs = 1.9;
-			break;
+	case 2:
+		mpu->m.fs = 1.9;
+		break;
 
-		case 3:
-			mpu->m.fs = 2.5;
-			break;
+	case 3:
+		mpu->m.fs = 2.5;
+		break;
 
-		case 4:
-			mpu->m.fs = 4.0;
-			break;
+	case 4:
+		mpu->m.fs = 4.0;
+		break;
 
-		case 5:
-			mpu->m.fs = 4.7;
-			break;
+	case 5:
+		mpu->m.fs = 4.7;
+		break;
 
-		case 6:
-			mpu->m.fs = 5.6;
-			break;
+	case 6:
+		mpu->m.fs = 5.6;
+		break;
 
-		case 7:
-			mpu->m.fs = 8.1;
-			break;
+	case 7:
+		mpu->m.fs = 8.1;
+		break;
 
-		default:
-			mpu->m.fs = 9999;
-			break;
+	default:
+		mpu->m.fs = 9999;
+		break;
 	}
 
 	return MPU_OK;

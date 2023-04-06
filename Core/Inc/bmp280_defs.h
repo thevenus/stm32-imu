@@ -1,40 +1,41 @@
 /**
-* Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
-*
-* BSD-3-Clause
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its
-*    contributors may be used to endorse or promote products derived from
-*    this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-* FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-* COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-* POSSIBILITY OF SUCH DAMAGE.
-*
-* @file	bmp280_defs.h
-* @date	2020-01-10
-* @version	v3.3.4
-*
-*/#ifndef __BMP280_DEFS_H__
+ * Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
+ *
+ * BSD-3-Clause
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @file	bmp280_defs.h
+ * @date	2020-01-10
+ * @version	v3.3.4
+ *
+ */
+#ifndef __BMP280_DEFS_H__
 #define __BMP280_DEFS_H__
 
 /*! CPP guard */
@@ -51,6 +52,7 @@ extern "C" {
 #else
 #include <stdint.h>
 #include <stddef.h>
+#include "main.h"
 #endif
 
 /****************************************************************/
@@ -140,6 +142,7 @@ extern "C" {
 #define BMP280_CHIP_ID1                      UINT8_C(0x56)
 #define BMP280_CHIP_ID2                      UINT8_C(0x57)
 #define BMP280_CHIP_ID3                      UINT8_C(0x58)
+#define BME280_CHIP_ID			     UINT8_C(0x60)
 
 /*! @name I2C addresses */
 #define BMP280_I2C_ADDR_PRIM                 UINT8_C(0x76)
@@ -345,56 +348,56 @@ typedef void (*bmp280_delay_fptr_t)(uint32_t period);
 /*! @name Calibration parameters' structure */
 struct bmp280_calib_param
 {
-    uint16_t dig_t1;
-    int16_t dig_t2;
-    int16_t dig_t3;
-    uint16_t dig_p1;
-    int16_t dig_p2;
-    int16_t dig_p3;
-    int16_t dig_p4;
-    int16_t dig_p5;
-    int16_t dig_p6;
-    int16_t dig_p7;
-    int16_t dig_p8;
-    int16_t dig_p9;
-    int32_t t_fine;
+	uint16_t dig_t1;
+	int16_t dig_t2;
+	int16_t dig_t3;
+	uint16_t dig_p1;
+	int16_t dig_p2;
+	int16_t dig_p3;
+	int16_t dig_p4;
+	int16_t dig_p5;
+	int16_t dig_p6;
+	int16_t dig_p7;
+	int16_t dig_p8;
+	int16_t dig_p9;
+	int32_t t_fine;
 };
 
 /*! @name Sensor configuration structure */
 struct bmp280_config
 {
-    uint8_t os_temp;
-    uint8_t os_pres;
-    uint8_t odr;
-    uint8_t filter;
-    uint8_t spi3w_en;
+	uint8_t os_temp;
+	uint8_t os_pres;
+	uint8_t odr;
+	uint8_t filter;
+	uint8_t spi3w_en;
 };
 
 /*! @name Sensor status structure */
 struct bmp280_status
 {
-    uint8_t measuring;
-    uint8_t im_update;
+	uint8_t measuring;
+	uint8_t im_update;
 };
 
 /*! @name Uncompensated data structure */
 struct bmp280_uncomp_data
 {
-    int32_t uncomp_temp;
-    uint32_t uncomp_press;
+	int32_t uncomp_temp;
+	uint32_t uncomp_press;
 };
 
 /*! @name API device structure */
 struct bmp280_dev
 {
-    uint8_t chip_id;
-    uint8_t dev_id;
-    uint8_t intf;
-    bmp280_com_fptr_t read;
-    bmp280_com_fptr_t write;
-    bmp280_delay_fptr_t delay_ms;
-    struct bmp280_calib_param calib_param;
-    struct bmp280_config conf;
+	uint8_t chip_id;
+	uint8_t dev_id;
+	uint8_t intf;
+	bmp280_com_fptr_t read;
+	bmp280_com_fptr_t write;
+	bmp280_delay_fptr_t delay_ms;
+	struct bmp280_calib_param calib_param;
+	struct bmp280_config conf;
 };
 
 #ifdef __cplusplus
