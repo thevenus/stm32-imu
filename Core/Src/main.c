@@ -157,7 +157,7 @@ int main(void)
 //	struct bmp280_dev bmp;
 //	struct bmp280_config conf;
 //	struct bmp280_uncomp_data ucomp_data;
-	double pres, temp;
+//	double pres, temp;
 //
 //	bmp.dev_id = BMP280_I2C_ADDR_PRIM;
 //	bmp.intf = BMP280_I2C_INTF;
@@ -173,7 +173,6 @@ int main(void)
 
 	struct bme280_dev bme280;
 	struct bme280_settings bme280_settings;
-	struct bme280_data bme280_data;
 
 	bme280_init(&bme280, I2C1);
 	bme280_get_sensor_settings(&bme280_settings, &bme280);
@@ -200,7 +199,6 @@ int main(void)
 
 	uint32_t timerLED = HAL_GetTick();
 	uint32_t timerMPU = HAL_GetTick();
-	uint32_t timerBMP = HAL_GetTick();
 
 	while (1) {
 		if (HAL_GetTick() - timerLED > 200) {
@@ -228,23 +226,23 @@ int main(void)
 			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
 
 			// complementary filter
-			float alpha = 0.05;
+			float alpha = 0.00;
 			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
 			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
 
-//			printf("%f,%f,%f,%f\r\n", angles.theta * 180 / PI, angles.phi * 180 / PI, angles.theta_a * 180 / PI, angles.phi_a * 180 / PI);
-
-			timerMPU = HAL_GetTick();
-		}
-
-		if (HAL_GetTick()-timerBMP > 5) {
+			// altitude estimation
 			double alt = 0;
-			bme280_get_sensor_data(BME280_PRESS, &bme280_data, &bme280);
 			bme280_get_altitude(&alt, &bme280);
 
-			printf("%f, %f\r\n", bme280_data.pressure, alt);
+			printf("%f,%f,%f,%f,%f\r\n",
+				angles.theta_a * 180 / PI,
+				angles.phi_a * 180 / PI,
+				angles.theta_g * 180 / PI,
+				angles.phi_g * 180 / PI,
+				alt
+			);
 
-			timerBMP = HAL_GetTick();
+			timerMPU = HAL_GetTick();
 		}
 		/* USER CODE END WHILE */
 
