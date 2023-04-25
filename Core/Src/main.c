@@ -27,9 +27,10 @@
 #include "stdio.h"
 #include "math.h"
 
-// Sensor libraries
+// Custom libraries
 #include "mpu6500.h"
-#include "bmp280.h"
+//#include "bmp280.h"
+#include "bme280.h"
 #include "IIRFilter.h"
 
 #ifdef __GNUC__
@@ -78,6 +79,7 @@ struct Attitude angles = { 0 };
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev);
 
 /* USER CODE END PFP */
 
@@ -152,27 +154,48 @@ int main(void)
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
 	// Setting up BMP280
-	struct bmp280_dev bmp;
-	struct bmp280_config conf;
-	struct bmp280_uncomp_data ucomp_data;
-	double pres;
+//	struct bmp280_dev bmp;
+//	struct bmp280_config conf;
+//	struct bmp280_uncomp_data ucomp_data;
+	double pres, temp;
+//
+//	bmp.dev_id = BMP280_I2C_ADDR_PRIM;
+//	bmp.intf = BMP280_I2C_INTF;
+//	bmp280_init(&bmp, I2C1);
+//	bmp280_get_config(&conf, &bmp);
+//
+//	conf.filter = BMP280_FILTER_COEFF_2;
+//	conf.os_pres = BMP280_OS_4X;
+//	conf.os_temp = BMP280_OS_4X;
+//	conf.odr = BMP280_ODR_2000_MS; // actually 10ms for BME280
+//	bmp280_set_config(&conf, &bmp);
+//	bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
 
-	bmp.dev_id = BMP280_I2C_ADDR_PRIM;
-	bmp.intf = BMP280_I2C_INTF;
-	bmp280_init(&bmp, I2C1);
+	struct bme280_dev bme280;
+	struct bme280_settings bme280_settings;
+	struct bme280_data bme280_data;
 
-	bmp280_get_config(&conf, &bmp);
+	bme280_init(&bme280, I2C1);
+	bme280_get_sensor_settings(&bme280_settings, &bme280);
 
-	conf.filter = BMP280_FILTER_COEFF_2;
-	conf.odr = BMP280_ODR_1000_MS;
-	bmp280_set_config(&conf, &bmp);
-	bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
+	bme280_settings.filter = BME280_FILTER_COEFF_4;
+
+	bme280_settings.osr_p = BME280_OVERSAMPLING_16X;
+	bme280_settings.osr_t = BME280_NO_OVERSAMPLING;
+	bme280_settings.osr_h = BME280_NO_OVERSAMPLING;
+
+	bme280_settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
+
+	bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &bme280_settings, &bme280);
+
+	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme280);
 
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
+	LL_mDelay(1000);
 	printf("Program is starting! \r\n");
 
 	uint32_t timerLED = HAL_GetTick();
@@ -198,7 +221,7 @@ int main(void)
 
 			// convert bodyframe gyro rates into euler frame gyro rate
 			angles.theta_dot = -(mpu.g.y * cos(angles.phi) - mpu.g.z * sin(angles.phi));
-			angles.phi_dot = -(mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta));
+			angles.phi_dot = mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta);
 
 			// calculate angle from gyro by integrating
 			angles.theta_g = angles.theta + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
@@ -214,10 +237,12 @@ int main(void)
 			timerMPU = HAL_GetTick();
 		}
 
-		if (HAL_GetTick()-timerBMP > 1000) {
-			bmp280_get_uncomp_data(&ucomp_data, &bmp);
-			bmp280_get_comp_pres_double(&pres, ucomp_data.uncomp_press, &bmp);
-			printf("%f\r\n", pres);
+		if (HAL_GetTick()-timerBMP > 5) {
+			double alt = 0;
+			bme280_get_sensor_data(BME280_PRESS, &bme280_data, &bme280);
+			bme280_get_altitude(&alt, &bme280);
+
+			printf("%f, %f\r\n", bme280_data.pressure, alt);
 
 			timerBMP = HAL_GetTick();
 		}
@@ -266,6 +291,34 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev)
+{
+	struct bme280_data bme280_data;
+
+	static double base_pressure = 0.0;
+	*altitude = 0;
+
+//	int8_t rslt = null_ptr_check(dev);
+	int8_t rslt = BME280_OK;
+	if (rslt == BME280_OK) {
+		if (base_pressure == 0.0) {
+			for (uint16_t i = 0; i<1000; i++) {
+				bme280_get_sensor_data(BME280_PRESS, &bme280_data, dev);
+				base_pressure += bme280_data.pressure/1000.0;
+				LL_mDelay(2);
+			}
+		} else {
+//			double pres_to_alt_coef = -8781.38014;
+			double rho_g = 12.0131;
+			bme280_get_sensor_data(BME280_PRESS, &bme280_data, dev);
+//			altitude[0] = pres_to_alt_coef * log(bme280_data.pressure/base_pressure);
+			*altitude = -(bme280_data.pressure - base_pressure) / rho_g;
+		}
+	}
+
+	return rslt;
+
+}
 /* USER CODE END 4 */
 
 /**
