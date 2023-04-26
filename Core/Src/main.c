@@ -144,7 +144,7 @@ int main(void)
 	struct MPU_Handle mpu;
 	MPU_Init(&mpu, &hi2c1);
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
-	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
+	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_2000DPS);
 	LL_mDelay(100);
 	MPU_Calibrate(&mpu);
 
@@ -207,7 +207,8 @@ int main(void)
 					 mpu.g.z * cos(angles.phi) * tan(angles.theta);
 
 			// calculate angle from gyro by integrating
-			angles.theta_g = angles.theta + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
+			float delta_theta = ((float)(HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
+			angles.theta_g = angles.theta + delta_theta;
 			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
 
 			// complementary filter
@@ -219,15 +220,13 @@ int main(void)
 			double alt = 0;
 			bme280_get_altitude(&alt, &bme280);
 
-			printf("%f,%f,%f,%f,%f,",
+			printf("%f,%f,%f,%f,%f\r\n",
 				angles.theta * 180 / PI,
-				angles.phi * 180 / PI,
+				delta_theta * 180 / PI,
 				angles.theta_a * 180 / PI,
 				angles.phi_a * 180 / PI,
 				alt
 			);
-
-			printf("%d\r\n",HAL_GetTick() - timerMPU);
 
 			timerMPU = HAL_GetTick();
 		}
