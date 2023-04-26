@@ -23,7 +23,7 @@ struct MPU_Data
 struct MPU_Handle
 {
 	// Parameters
-	I2C_TypeDef *i2cx;
+	I2C_HandleTypeDef *hi2c;
 
 	// Data
 	struct MPU_Data a;
@@ -38,7 +38,7 @@ enum MPU_Status
 
 };
 
-enum MPU_Status MPU_Init(struct MPU_Handle*, I2C_TypeDef*);
+enum MPU_Status MPU_Init(struct MPU_Handle*, I2C_HandleTypeDef*);
 enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
 enum MPU_Status MPU_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count);
 enum MPU_Status MPU_WriteRegBit(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t data, uint8_t mask);

@@ -29,7 +29,6 @@
 
 // Custom libraries
 #include "mpu6500.h"
-//#include "bmp280.h"
 #include "bme280.h"
 #include "IIRFilter.h"
 
@@ -42,8 +41,7 @@
 PUTCHAR_PROTOTYPE
 {
 	USART2->DR = (uint8_t) ch;
-	while (!LL_USART_IsActiveFlag_TXE(USART2))
-		;
+	while (!LL_USART_IsActiveFlag_TXE(USART2));
 	return ch;
 }
 
@@ -60,7 +58,7 @@ PUTCHAR_PROTOTYPE
 #define G_MPS2 9.81f
 
 #define LED_TOGGLE_RATE_HZ 5
-#define MPU_SAMPLE_RATE_HZ 500
+#define MPU_SAMPLE_RATE_HZ 1000
 
 /* USER CODE END PD */
 
@@ -138,43 +136,29 @@ int main(void)
 	MX_I2C1_Init();
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
-	LL_mDelay(1000); // wait some time for the sensors to stabilize
 
-	// Setting up MPU and its filters
+// wait some time for the sensors to stabilize
+	LL_mDelay(1000);
+
+// Setting up MPU and its filters
 	struct MPU_Handle mpu;
-	MPU_Init(&mpu, I2C1);
+	MPU_Init(&mpu, &hi2c1);
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
 	MPU_SetGyroFS(&mpu, MPU6500_GYRO_FS_250DPS);
 	LL_mDelay(100);
 	MPU_Calibrate(&mpu);
 
 	struct IIRFilter theta_filter;
-	struct IIRFilter phi_filter;
 	IIR_Init(&theta_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15Hz
+
+	struct IIRFilter phi_filter;
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
-	// Setting up BMP280
-//	struct bmp280_dev bmp;
-//	struct bmp280_config conf;
-//	struct bmp280_uncomp_data ucomp_data;
-//	double pres, temp;
-//
-//	bmp.dev_id = BMP280_I2C_ADDR_PRIM;
-//	bmp.intf = BMP280_I2C_INTF;
-//	bmp280_init(&bmp, I2C1);
-//	bmp280_get_config(&conf, &bmp);
-//
-//	conf.filter = BMP280_FILTER_COEFF_2;
-//	conf.os_pres = BMP280_OS_4X;
-//	conf.os_temp = BMP280_OS_4X;
-//	conf.odr = BMP280_ODR_2000_MS; // actually 10ms for BME280
-//	bmp280_set_config(&conf, &bmp);
-//	bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
-
+// Setting up BME280
 	struct bme280_dev bme280;
 	struct bme280_settings bme280_settings;
 
-	bme280_init(&bme280, I2C1);
+	bme280_init(&bme280, &hi2c1);
 	bme280_get_sensor_settings(&bme280_settings, &bme280);
 
 	bme280_settings.filter = BME280_FILTER_COEFF_4;
@@ -188,20 +172,19 @@ int main(void)
 	bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &bme280_settings, &bme280);
 
 	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme280);
-
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
 	LL_mDelay(1000);
-	printf("Program is starting! \r\n");
+	printf("Program is starting!\r\n");
 
 	uint32_t timerLED = HAL_GetTick();
 	uint32_t timerMPU = HAL_GetTick();
 
 	while (1) {
-		if (HAL_GetTick() - timerLED > 200) {
+		if (HAL_GetTick() - timerLED > 1000) {
 			toggle_led();
 			timerLED = HAL_GetTick();
 		}
@@ -210,7 +193,7 @@ int main(void)
 			MPU_GetSensorData(&mpu);
 
 			// calculate pitch and roll from accel
-			angles.theta_a = atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
+			angles.theta_a = -atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
 			angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
 
 			// filter accel theta calculation
@@ -218,15 +201,17 @@ int main(void)
 			angles.phi_a = IIR_Update(&phi_filter, angles.phi_a);
 
 			// convert bodyframe gyro rates into euler frame gyro rate
-			angles.theta_dot = -(mpu.g.y * cos(angles.phi) - mpu.g.z * sin(angles.phi));
-			angles.phi_dot = mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) + mpu.g.z * cos(angles.phi) * tan(angles.theta);
+			angles.theta_dot = mpu.g.y * cos(angles.phi) -
+					   mpu.g.z * sin(angles.phi);
+			angles.phi_dot = mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) +
+					 mpu.g.z * cos(angles.phi) * tan(angles.theta);
 
 			// calculate angle from gyro by integrating
 			angles.theta_g = angles.theta + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
 			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
 
 			// complementary filter
-			float alpha = 0.00;
+			float alpha = 0.02;
 			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
 			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
 
@@ -234,13 +219,15 @@ int main(void)
 			double alt = 0;
 			bme280_get_altitude(&alt, &bme280);
 
-			printf("%f,%f,%f,%f,%f\r\n",
+			printf("%f,%f,%f,%f,%f,",
+				angles.theta * 180 / PI,
+				angles.phi * 180 / PI,
 				angles.theta_a * 180 / PI,
 				angles.phi_a * 180 / PI,
-				angles.theta_g * 180 / PI,
-				angles.phi_g * 180 / PI,
 				alt
 			);
+
+			printf("%d\r\n",HAL_GetTick() - timerMPU);
 
 			timerMPU = HAL_GetTick();
 		}
@@ -264,11 +251,12 @@ void SystemClock_Config(void)
 	/** Initializes the RCC Oscillators according to the specified parameters
 	 * in the RCC_OscInitTypeDef structure.
 	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
 	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
 		Error_Handler();
@@ -300,9 +288,9 @@ int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev)
 	int8_t rslt = BME280_OK;
 	if (rslt == BME280_OK) {
 		if (base_pressure == 0.0) {
-			for (uint16_t i = 0; i<1000; i++) {
+			for (uint16_t i = 0; i < 1000; i++) {
 				bme280_get_sensor_data(BME280_PRESS, &bme280_data, dev);
-				base_pressure += bme280_data.pressure/1000.0;
+				base_pressure += bme280_data.pressure / 1000.0;
 				LL_mDelay(2);
 			}
 		} else {

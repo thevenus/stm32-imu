@@ -1,40 +1,40 @@
 /**
-* Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
-*
-* BSD-3-Clause
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its
-*    contributors may be used to endorse or promote products derived from
-*    this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-* FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-* COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-* POSSIBILITY OF SUCH DAMAGE.
-*
-* @file       bme280_defs.h
-* @date       2020-12-17
-* @version    v3.5.1
-*
-*/
+ * Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
+ *
+ * BSD-3-Clause
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @file       bme280_defs.h
+ * @date       2020-12-17
+ * @version    v3.5.1
+ *
+ */
 
 #ifndef _BME280_DEFS_H
 #define _BME280_DEFS_H
@@ -263,11 +263,12 @@
 /*!
  * @brief Interface selection Enums
  */
-enum bme280_intf {
-    /*! SPI interface */
-    BME280_SPI_INTF,
-    /*! I2C interface */
-    BME280_I2C_INTF
+enum bme280_intf
+{
+	/*! SPI interface */
+	BME280_SPI_INTF,
+	/*! I2C interface */
+	BME280_I2C_INTF
 };
 
 /******************************************************************************/
@@ -305,8 +306,7 @@ typedef BME280_INTF_RET_TYPE (*bme280_read_fptr_t)(uint8_t reg_addr, uint8_t *re
  * @retval Non zero value -> Fail.
  *
  */
-typedef BME280_INTF_RET_TYPE (*bme280_write_fptr_t)(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len,
-                                                    void *intf_ptr);
+typedef BME280_INTF_RET_TYPE (*bme280_write_fptr_t)(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
 
 /*!
  * @brief Delay function pointer which should be mapped to
@@ -328,62 +328,62 @@ typedef void (*bme280_delay_us_fptr_t)(uint32_t period, void *intf_ptr);
  */
 struct bme280_calib_data
 {
-    /*! Calibration coefficient for the temperature sensor */
-    uint16_t dig_t1;
+	/*! Calibration coefficient for the temperature sensor */
+	uint16_t dig_t1;
 
-    /*! Calibration coefficient for the temperature sensor */
-    int16_t dig_t2;
+	/*! Calibration coefficient for the temperature sensor */
+	int16_t dig_t2;
 
-    /*! Calibration coefficient for the temperature sensor */
-    int16_t dig_t3;
+	/*! Calibration coefficient for the temperature sensor */
+	int16_t dig_t3;
 
-    /*! Calibration coefficient for the pressure sensor */
-    uint16_t dig_p1;
+	/*! Calibration coefficient for the pressure sensor */
+	uint16_t dig_p1;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p2;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p2;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p3;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p3;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p4;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p4;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p5;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p5;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p6;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p6;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p7;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p7;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p8;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p8;
 
-    /*! Calibration coefficient for the pressure sensor */
-    int16_t dig_p9;
+	/*! Calibration coefficient for the pressure sensor */
+	int16_t dig_p9;
 
-    /*! Calibration coefficient for the humidity sensor */
-    uint8_t dig_h1;
+	/*! Calibration coefficient for the humidity sensor */
+	uint8_t dig_h1;
 
-    /*! Calibration coefficient for the humidity sensor */
-    int16_t dig_h2;
+	/*! Calibration coefficient for the humidity sensor */
+	int16_t dig_h2;
 
-    /*! Calibration coefficient for the humidity sensor */
-    uint8_t dig_h3;
+	/*! Calibration coefficient for the humidity sensor */
+	uint8_t dig_h3;
 
-    /*! Calibration coefficient for the humidity sensor */
-    int16_t dig_h4;
+	/*! Calibration coefficient for the humidity sensor */
+	int16_t dig_h4;
 
-    /*! Calibration coefficient for the humidity sensor */
-    int16_t dig_h5;
+	/*! Calibration coefficient for the humidity sensor */
+	int16_t dig_h5;
 
-    /*! Calibration coefficient for the humidity sensor */
-    int8_t dig_h6;
+	/*! Calibration coefficient for the humidity sensor */
+	int8_t dig_h6;
 
-    /*! Variable to store the intermediate temperature coefficient */
-    int32_t t_fine;
+	/*! Variable to store the intermediate temperature coefficient */
+	int32_t t_fine;
 };
 
 /*!
@@ -393,14 +393,14 @@ struct bme280_calib_data
 #ifdef BME280_DOUBLE_ENABLE
 struct bme280_data
 {
-    /*! Compensated pressure */
-    double pressure;
+	/*! Compensated pressure */
+	double pressure;
 
-    /*! Compensated temperature */
-    double temperature;
+	/*! Compensated temperature */
+	double temperature;
 
-    /*! Compensated humidity */
-    double humidity;
+	/*! Compensated humidity */
+	double humidity;
 };
 #else
 struct bme280_data
@@ -422,14 +422,14 @@ struct bme280_data
  */
 struct bme280_uncomp_data
 {
-    /*! Un-compensated pressure */
-    uint32_t pressure;
+	/*! Un-compensated pressure */
+	uint32_t pressure;
 
-    /*! Un-compensated temperature */
-    uint32_t temperature;
+	/*! Un-compensated temperature */
+	uint32_t temperature;
 
-    /*! Un-compensated humidity */
-    uint32_t humidity;
+	/*! Un-compensated humidity */
+	uint32_t humidity;
 };
 
 /*!
@@ -438,20 +438,20 @@ struct bme280_uncomp_data
  */
 struct bme280_settings
 {
-    /*! Pressure oversampling */
-    uint8_t osr_p;
+	/*! Pressure oversampling */
+	uint8_t osr_p;
 
-    /*! Temperature oversampling */
-    uint8_t osr_t;
+	/*! Temperature oversampling */
+	uint8_t osr_t;
 
-    /*! Humidity oversampling */
-    uint8_t osr_h;
+	/*! Humidity oversampling */
+	uint8_t osr_h;
 
-    /*! Filter coefficient */
-    uint8_t filter;
+	/*! Filter coefficient */
+	uint8_t filter;
 
-    /*! Standby time */
-    uint8_t standby_time;
+	/*! Standby time */
+	uint8_t standby_time;
 };
 
 /*!
@@ -459,37 +459,37 @@ struct bme280_settings
  */
 struct bme280_dev
 {
-    /*! Chip Id */
-    uint8_t chip_id;
+	/*! Chip Id */
+	uint8_t chip_id;
 
-    /*! Interface Selection
-     * For SPI, intf = BME280_SPI_INTF
-     * For I2C, intf = BME280_I2C_INTF
-     */
-    enum bme280_intf intf;
+	/*! Interface Selection
+	 * For SPI, intf = BME280_SPI_INTF
+	 * For I2C, intf = BME280_I2C_INTF
+	 */
+	enum bme280_intf intf;
 
-    /*!
-     * The interface pointer is used to enable the user
-     * to link their interface descriptors for reference during the
-     * implementation of the read and write interfaces to the
-     * hardware.
-     */
-    void *intf_ptr;
+	/*!
+	 * The interface pointer is used to enable the user
+	 * to link their interface descriptors for reference during the
+	 * implementation of the read and write interfaces to the
+	 * hardware.
+	 */
+	void *intf_ptr;
 
-    /*! Variable to store result of read/write function */
-    BME280_INTF_RET_TYPE intf_rslt;
+	/*! Variable to store result of read/write function */
+	BME280_INTF_RET_TYPE intf_rslt;
 
-    /*! Read function pointer */
-    bme280_read_fptr_t read;
+	/*! Read function pointer */
+	bme280_read_fptr_t read;
 
-    /*! Write function pointer */
-    bme280_write_fptr_t write;
+	/*! Write function pointer */
+	bme280_write_fptr_t write;
 
-    /*! Delay function pointer */
-    bme280_delay_us_fptr_t delay_us;
+	/*! Delay function pointer */
+	bme280_delay_us_fptr_t delay_us;
 
-    /*! Trim data */
-    struct bme280_calib_data calib_data;
+	/*! Trim data */
+	struct bme280_calib_data calib_data;
 };
 
 #endif /* _BME280_DEFS_H */

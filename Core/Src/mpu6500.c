@@ -11,87 +11,84 @@
 #define DEG_TO_RAD 0.017453292f
 
 // ====== INTERNAL FUNCTIONS ===============================
-static inline void i2c_start(struct MPU_Handle *mpu)
-{
-	if (mpu == NULL)
-		return;
-
-	LL_I2C_GenerateStartCondition(mpu->i2cx);
-	while (!LL_I2C_IsActiveFlag_SB(mpu->i2cx));
-}
-
-static inline void i2c_stop(struct MPU_Handle *mpu)
-{
-	LL_I2C_GenerateStopCondition(mpu->i2cx);
-}
-
-static inline void i2c_ack(struct MPU_Handle *mpu)
-{
-	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
-}
-
-static inline void i2c_nack(struct MPU_Handle *mpu)
-{
-	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
-}
-
-// rw = 0 -> write operation
-// rw = 1 -> read operation
-static inline void i2c_send_addr(struct MPU_Handle *mpu, uint8_t address, uint8_t rw)
-{
-	if (mpu == NULL)
-		return;
-
-	LL_I2C_TransmitData8(mpu->i2cx, (address << 1) + rw);
-	while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx))
-		;
-	LL_I2C_ClearFlag_ADDR(mpu->i2cx);
-}
-
-static inline void i2c_send_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t count)
-{
-	if (mpu == NULL)
-		return;
-	if (pdata == NULL)
-		return;
-
-	for (uint8_t i = 0; i < count; i++) {
-		LL_I2C_TransmitData8(mpu->i2cx, pdata[i]);
-		while (!LL_I2C_IsActiveFlag_TXE(mpu->i2cx))
-			;
-	}
-}
-
-static inline void i2c_recv_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t count)
-{
-	if (mpu == NULL)
-		return;
-	if (pdata == NULL)
-		return;
-
-	for (uint8_t i = 0; i < count; i++) {
-		if (i < count - 1) {
-			i2c_ack(mpu);
-		} else {
-			i2c_nack(mpu);
-		}
-
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
-			;
-		pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
-	}
-}
+//static inline void i2c_start(struct MPU_Handle *mpu)
+//{
+//	if (mpu == NULL)
+//		return;
+//
+//	LL_I2C_GenerateStartCondition(mpu->i2cx);
+//	while (!LL_I2C_IsActiveFlag_SB(mpu->i2cx));
+//}
+//
+//static inline void i2c_stop(struct MPU_Handle *mpu)
+//{
+//	LL_I2C_GenerateStopCondition(mpu->i2cx);
+//}
+//
+//static inline void i2c_ack(struct MPU_Handle *mpu)
+//{
+//	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
+//}
+//
+//static inline void i2c_nack(struct MPU_Handle *mpu)
+//{
+//	LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
+//}
+//
+//// rw = 0 -> write operation
+//// rw = 1 -> read operation
+//static inline void i2c_send_addr(struct MPU_Handle *mpu, uint8_t address, uint8_t rw)
+//{
+//	if (mpu == NULL)
+//		return;
+//
+//	LL_I2C_TransmitData8(mpu->i2cx, (address << 1) + rw);
+//	while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx));
+//	LL_I2C_ClearFlag_ADDR(mpu->i2cx);
+//}
+//
+//static inline void i2c_send_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t count)
+//{
+//	if (mpu == NULL)
+//		return;
+//	if (pdata == NULL)
+//		return;
+//
+//	for (uint8_t i = 0; i < count; i++) {
+//		LL_I2C_TransmitData8(mpu->i2cx, pdata[i]);
+//		while (!LL_I2C_IsActiveFlag_TXE(mpu->i2cx));
+//	}
+//}
+//
+//static inline void i2c_recv_data(struct MPU_Handle *mpu, uint8_t *pdata, uint8_t count)
+//{
+//	if (mpu == NULL)
+//		return;
+//	if (pdata == NULL)
+//		return;
+//
+//	for (uint8_t i = 0; i < count; i++) {
+//		if (i < count - 1) {
+//			i2c_ack(mpu);
+//		} else {
+//			i2c_nack(mpu);
+//		}
+//
+//		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx));
+//		pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
+//	}
+//}
 
 // ====== END INTERNAL FUNCTIONS ===========================
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 // ====== LIBRARY FUNCTIONS ================================
-enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_TypeDef *i2cx)
+enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 {
-	if (mpu == NULL || i2cx == NULL)
+	if (mpu == NULL || hi2c == NULL)
 		return MPU_NULLPTR;
 
-	mpu->i2cx = i2cx;
+	mpu->hi2c = hi2c;
 
 	// Reset the sensor ==========================================================
 	uint8_t data = 0b10000000;
@@ -118,84 +115,7 @@ enum MPU_Status MPU_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *p
 	if (pdata == NULL)
 		return MPU_NULLPTR;
 
-	i2c_start(mpu);
-	i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_WRITE);
-	i2c_send_data(mpu, &reg_addr, 1);
-	i2c_start(mpu);
-
-	if (count == 1) {
-		/* Send address and clear ACK bit before clearing ADDR */
-		LL_I2C_TransmitData8(mpu->i2cx, (MPU6500_ADDR << 1) + MPU6500_READ);
-		while (!LL_I2C_IsActiveFlag_ADDR(mpu->i2cx))
-			;
-		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
-		LL_I2C_ClearFlag_ADDR(mpu->i2cx);
-
-		/* Program stop bit */
-		LL_I2C_GenerateStopCondition(mpu->i2cx);
-
-		/* Read DR after RXNE = 1 */
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
-			;
-		pdata[0] = LL_I2C_ReceiveData8(mpu->i2cx);
-	} else if (count == 2) {
-		/* Set POS and ACK */
-		LL_I2C_EnableBitPOS(mpu->i2cx);
-		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
-
-		/* Send address and clear ADDR */
-		i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
-
-		/* Clear ACK */
-		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
-
-		/* Wait for BTF=1 */
-		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx))
-			;
-
-		/* Program STOP */
-		LL_I2C_GenerateStopCondition(mpu->i2cx);
-
-		/* Read DR twice */
-		pdata[0] = LL_I2C_ReceiveData8(mpu->i2cx);
-		pdata[1] = LL_I2C_ReceiveData8(mpu->i2cx);
-	} else if (count > 2) {
-		/* Set ACK */
-		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_ACK);
-
-		/* Send address and clear ADDR */
-		i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_READ);
-
-		/* Receive data until last 3 bytes remain */
-		for (uint8_t i = 0; i < count - 3; i++) {
-			while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
-				;
-			pdata[i] = LL_I2C_ReceiveData8(mpu->i2cx);
-		}
-
-		/* Wait for RXNE=1 */
-		while (!LL_I2C_IsActiveFlag_BTF(mpu->i2cx))
-			;
-
-		/* Clear ACK */
-		LL_I2C_AcknowledgeNextData(mpu->i2cx, LL_I2C_NACK);
-
-		/* Read DataN-2 in DR => This will launch the DataN reception in the shift register */
-		pdata[count - 3] = LL_I2C_ReceiveData8(mpu->i2cx);
-
-		/* Program STOP */
-		LL_I2C_GenerateStopCondition(mpu->i2cx);
-
-		/* Read DataN-1 */
-		pdata[count - 2] = LL_I2C_ReceiveData8(mpu->i2cx);
-
-		/* Wait for RXNE = 1 and read DataN */
-		while (!LL_I2C_IsActiveFlag_RXNE(mpu->i2cx))
-			;
-		pdata[count - 1] = LL_I2C_ReceiveData8(mpu->i2cx);
-	} else {
-		return MPU_ERR;
-	}
+	HAL_I2C_Mem_Read(mpu->hi2c, MPU6500_ADDR << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, pdata, count, HAL_MAX_DELAY);
 
 	return MPU_OK;
 }
@@ -207,11 +127,7 @@ enum MPU_Status MPU_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *
 	if (pdata == NULL)
 		return MPU_NULLPTR;
 
-	i2c_start(mpu);
-	i2c_send_addr(mpu, MPU6500_ADDR, MPU6500_WRITE);
-	i2c_send_data(mpu, &reg_addr, 1);
-	i2c_send_data(mpu, pdata, count);
-	i2c_stop(mpu);
+	HAL_I2C_Mem_Write(mpu->hi2c, MPU6500_ADDR << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, pdata, count, HAL_MAX_DELAY);
 
 	return MPU_OK;
 }
@@ -313,19 +229,6 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 	mpu->g.x = (((float) mpu->g.xraw / 32750.0f) * mpu->g.fs - mpu->g.xcalib) * DEG_TO_RAD;
 	mpu->g.y = (((float) mpu->g.yraw / 32750.0f) * mpu->g.fs - mpu->g.ycalib) * DEG_TO_RAD;
 	mpu->g.z = (((float) mpu->g.zraw / 32750.0f) * mpu->g.fs - mpu->g.zcalib) * DEG_TO_RAD;
-
-	// == Read magnetometer data ==
-//	HMC_ReadReg(mpu, reg_addr, pdata, count)
-//
-//	printf("Accel X: %f\r\n", mpu->a.x);
-//	printf("Accel Y: %f\r\n", mpu->a.y);
-//	printf("Accel Z: %f\r\n", mpu->a.z);
-//
-//	printf("Gyro X: %f\r\n", mpu->g.x);
-//	printf("Gyro Y: %f\r\n", mpu->g.y);
-//	printf("Gyro Z: %f\r\n", mpu->g.z);
-//
-//	printf("Temperature: %f\r\n", mpu->t);
 
 	return MPU_OK;
 }
@@ -451,37 +354,37 @@ enum MPU_Status HMC_SetConfig(struct MPU_Handle *mpu, uint8_t avg, uint8_t drate
 	return MPU_OK;
 }
 
-enum MPU_Status HMC_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count)
-{
-	if (mpu == NULL)
-		return MPU_NULLPTR;
-	if (pdata == NULL)
-		return MPU_NULLPTR;
-
-	i2c_start(mpu);
-	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_WRITE);
-	i2c_send_data(mpu, &reg_addr, 1);
-	i2c_start(mpu);
-	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_READ);
-	i2c_recv_data(mpu, pdata, count);
-	i2c_stop(mpu);
-
-	return MPU_OK;
-}
-
-enum MPU_Status HMC_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count)
-{
-	if (mpu == NULL)
-		return MPU_NULLPTR;
-	if (pdata == NULL)
-		return MPU_NULLPTR;
-
-	i2c_start(mpu);
-	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_WRITE);
-	i2c_send_data(mpu, &reg_addr, 1);
-	i2c_send_data(mpu, pdata, count);
-	i2c_stop(mpu);
-
-	return MPU_OK;
-
-}
+//enum MPU_Status HMC_ReadReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count)
+//{
+//	if (mpu == NULL)
+//		return MPU_NULLPTR;
+//	if (pdata == NULL)
+//		return MPU_NULLPTR;
+//
+//	i2c_start(mpu);
+//	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_WRITE);
+//	i2c_send_data(mpu, &reg_addr, 1);
+//	i2c_start(mpu);
+//	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_READ);
+//	i2c_recv_data(mpu, pdata, count);
+//	i2c_stop(mpu);
+//
+//	return MPU_OK;
+//}
+//
+//enum MPU_Status HMC_WriteReg(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_t *pdata, uint8_t count)
+//{
+//	if (mpu == NULL)
+//		return MPU_NULLPTR;
+//	if (pdata == NULL)
+//		return MPU_NULLPTR;
+//
+//	i2c_start(mpu);
+//	i2c_send_addr(mpu, HMC5883_ADDR, HMC5883_WRITE);
+//	i2c_send_data(mpu, &reg_addr, 1);
+//	i2c_send_data(mpu, pdata, count);
+//	i2c_stop(mpu);
+//
+//	return MPU_OK;
+//
+//}

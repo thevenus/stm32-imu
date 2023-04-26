@@ -409,7 +409,7 @@ static int8_t i2c_reg_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t length,
  *  @brief This API is the entry point.
  *  It reads the chip-id and calibration data from the sensor.
  */
-int8_t bme280_init(struct bme280_dev *dev, I2C_TypeDef *i2cx)
+int8_t bme280_init(struct bme280_dev *dev, I2C_HandleTypeDef *i2cx)
 {
 	int8_t rslt;
 	uint8_t chip_id = 0;
@@ -418,7 +418,7 @@ int8_t bme280_init(struct bme280_dev *dev, I2C_TypeDef *i2cx)
 	// I2Cx = i2cx;
 
 	dev->intf = BME280_I2C_INTF;
-	dev->intf_ptr = (void*)i2cx;
+	dev->intf_ptr = (void*) i2cx;
 	dev->delay_us = delay_ms;
 	dev->read = i2c_reg_read;
 	dev->write = i2c_reg_write;
@@ -712,7 +712,8 @@ int8_t bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data
  * temperature and/or humidity data according to the component selected
  * by the user.
  */
-int8_t bme280_compensate_data(uint8_t sensor_comp, const struct bme280_uncomp_data *uncomp_data, struct bme280_data *comp_data, struct bme280_calib_data *calib_data)
+int8_t bme280_compensate_data(uint8_t sensor_comp, const struct bme280_uncomp_data *uncomp_data, struct bme280_data *comp_data,
+		struct bme280_calib_data *calib_data)
 {
 	int8_t rslt = BME280_OK;
 
@@ -1479,128 +1480,132 @@ static void delay_ms(uint32_t period, void *intf_ptr)
 
 static int8_t i2c_reg_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-	I2C_TypeDef *I2Cx = (I2C_TypeDef*)intf_ptr;
-	uint8_t i2c_addr = BME280_I2C_ADDR_PRIM;
+	HAL_I2C_Mem_Write((I2C_HandleTypeDef*) intf_ptr, BME280_I2C_ADDR_PRIM << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, reg_data, length, HAL_MAX_DELAY);
 
-	/* Send START */
-	LL_I2C_GenerateStartCondition(I2Cx);
-	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
-
-	/* Send ADDR with WRITE*/
-	LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1));
-	while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-	LL_I2C_ClearFlag_ADDR(I2Cx);
-
-	/* Send reg_addr */
-	LL_I2C_TransmitData8(I2Cx, reg_addr);
-	while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
-
-	/* Send the data to be written */
-	for (uint8_t i = 0; i < length; i++) {
-		LL_I2C_TransmitData8(I2Cx, reg_data[i]);
-		while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
-	}
-
-	/* Send STOP */
-	LL_I2C_GenerateStopCondition(I2Cx);
-
+//	I2C_TypeDef *I2Cx = (I2C_TypeDef*) intf_ptr;
+//	uint8_t i2c_addr = BME280_I2C_ADDR_PRIM;
+//
+//	/* Send START */
+//	LL_I2C_GenerateStartCondition(I2Cx);
+//	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
+//
+//	/* Send ADDR with WRITE*/
+//	LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1));
+//	while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+//	LL_I2C_ClearFlag_ADDR(I2Cx);
+//
+//	/* Send reg_addr */
+//	LL_I2C_TransmitData8(I2Cx, reg_addr);
+//	while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
+//
+//	/* Send the data to be written */
+//	for (uint8_t i = 0; i < length; i++) {
+//		LL_I2C_TransmitData8(I2Cx, reg_data[i]);
+//		while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
+//	}
+//
+//	/* Send STOP */
+//	LL_I2C_GenerateStopCondition(I2Cx);
+//
 	return BME280_OK;
 
 }
 
 static int8_t i2c_reg_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-	I2C_TypeDef *I2Cx = (I2C_TypeDef*)intf_ptr;
-	uint8_t i2c_addr = BME280_I2C_ADDR_PRIM;
+	HAL_I2C_Mem_Read((I2C_HandleTypeDef*) intf_ptr, BME280_I2C_ADDR_PRIM << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, reg_data, length, HAL_MAX_DELAY);
 
-	/* Send START */
-	LL_I2C_GenerateStartCondition(I2Cx);
-	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
-
-	/* Send ADDR with WRITE*/
-	LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1));
-	while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-	LL_I2C_ClearFlag_ADDR(I2Cx);
-
-	/* Send reg_addr */
-	LL_I2C_TransmitData8(I2Cx, reg_addr);
-	while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
-
-	/* Send START again and start reading the register */
-	LL_I2C_GenerateStartCondition(I2Cx);
-	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
-
-	if (length == 1) {
-		/* Send address and clear ACK bit before clearing ADDR */
-		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1)+1);
-		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
-		LL_I2C_ClearFlag_ADDR(I2Cx);
-
-		/* Program stop bit */
-		LL_I2C_GenerateStopCondition(I2Cx);
-
-		/* Read DR after RXNE = 1 */
-		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
-		reg_data[0] = LL_I2C_ReceiveData8(I2Cx);
-	} else if (length == 2) {
-		/* Set POS and ACK */
-		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
-
-		/* Send address */
-		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1) + 1);
-
-		/* Wait and clear ADDR */
-		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-		LL_I2C_ClearFlag_ADDR(I2Cx);
-
-		/* Read first byte and clear ACK */
-		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
-		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
-		reg_data[0] = LL_I2C_ReceiveData8(I2Cx);
-
-		/* Program STOP */
-		LL_I2C_GenerateStopCondition(I2Cx);
-
-		/* Read second byte */
-		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
-		reg_data[1] = LL_I2C_ReceiveData8(I2Cx);
-	} else if (length > 2) {
-		/* Set ACK */
-		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
-
-		/* Send address and clear ADDR */
-		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1)+1);
-		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-		LL_I2C_ClearFlag_ADDR(I2Cx);
-
-		/* Receive data until last 3 bytes remain */
-		for (uint8_t i=0; i < length-3; i++) {
-			while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
-			reg_data[i] = LL_I2C_ReceiveData8(I2Cx);
-		}
-
-		/* Wait for BTF=1 */
-		while (!LL_I2C_IsActiveFlag_BTF(I2Cx));
-
-		/* Clear ACK */
-		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
-
-		/* Read DataN-2 in DR => This will launch the DataN reception in the shift register */
-		reg_data[length-3] = LL_I2C_ReceiveData8(I2Cx);
-
-		/* Program STOP */
-		LL_I2C_GenerateStopCondition(I2Cx);
-
-		/* Read DataN-1 */
-		reg_data[length - 2] = LL_I2C_ReceiveData8(I2Cx);
-
-		/* Wait for RXNE = 1 and read DataN */
-		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
-		reg_data[length-1] = LL_I2C_ReceiveData8(I2Cx);
-	} else {
-		return BME280_E_INVALID_LEN;
-	}
+//	I2C_TypeDef *I2Cx = (I2C_TypeDef*) intf_ptr;
+//	uint8_t i2c_addr = BME280_I2C_ADDR_PRIM;
+//
+//	/* Send START */
+//	LL_I2C_GenerateStartCondition(I2Cx);
+//	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
+//
+//	/* Send ADDR with WRITE*/
+//	LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1));
+//	while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+//	LL_I2C_ClearFlag_ADDR(I2Cx);
+//
+//	/* Send reg_addr */
+//	LL_I2C_TransmitData8(I2Cx, reg_addr);
+//	while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
+//
+//	/* Send START again and start reading the register */
+//	LL_I2C_GenerateStartCondition(I2Cx);
+//	while (!LL_I2C_IsActiveFlag_SB(I2Cx));
+//
+//	if (length == 1) {
+//		/* Send address and clear ACK bit before clearing ADDR */
+//		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1) + 1);
+//		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+//		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
+//		LL_I2C_ClearFlag_ADDR(I2Cx);
+//
+//		/* Program stop bit */
+//		LL_I2C_GenerateStopCondition(I2Cx);
+//
+//		/* Read DR after RXNE = 1 */
+//		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+//		reg_data[0] = LL_I2C_ReceiveData8(I2Cx);
+//	} else if (length == 2) {
+//		/* Set POS and ACK */
+//		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
+//
+//		/* Send address */
+//		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1) + 1);
+//
+//		/* Wait and clear ADDR */
+//		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+//		LL_I2C_ClearFlag_ADDR(I2Cx);
+//
+//		/* Read first byte and clear ACK */
+//		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+//		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
+//		reg_data[0] = LL_I2C_ReceiveData8(I2Cx);
+//
+//		/* Program STOP */
+//		LL_I2C_GenerateStopCondition(I2Cx);
+//
+//		/* Read second byte */
+//		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+//		reg_data[1] = LL_I2C_ReceiveData8(I2Cx);
+//	} else if (length > 2) {
+//		/* Set ACK */
+//		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
+//
+//		/* Send address and clear ADDR */
+//		LL_I2C_TransmitData8(I2Cx, (i2c_addr << 1) + 1);
+//		while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+//		LL_I2C_ClearFlag_ADDR(I2Cx);
+//
+//		/* Receive data until last 3 bytes remain */
+//		for (uint8_t i = 0; i < length - 3; i++) {
+//			while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+//			reg_data[i] = LL_I2C_ReceiveData8(I2Cx);
+//		}
+//
+//		/* Wait for BTF=1 */
+//		while (!LL_I2C_IsActiveFlag_BTF(I2Cx));
+//
+//		/* Clear ACK */
+//		LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
+//
+//		/* Read DataN-2 in DR => This will launch the DataN reception in the shift register */
+//		reg_data[length - 3] = LL_I2C_ReceiveData8(I2Cx);
+//
+//		/* Program STOP */
+//		LL_I2C_GenerateStopCondition(I2Cx);
+//
+//		/* Read DataN-1 */
+//		reg_data[length - 2] = LL_I2C_ReceiveData8(I2Cx);
+//
+//		/* Wait for RXNE = 1 and read DataN */
+//		while (!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+//		reg_data[length - 1] = LL_I2C_ReceiveData8(I2Cx);
+//	} else {
+//		return BME280_E_INVALID_LEN;
+//	}
 
 	return BME280_OK;
 }

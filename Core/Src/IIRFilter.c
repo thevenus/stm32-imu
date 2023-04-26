@@ -35,8 +35,8 @@ float IIR_Update(struct IIRFilter *filter, float in)
 	// shift output and calculate the new output
 	filter->out[2] = filter->out[1];
 	filter->out[1] = filter->out[0];
-	filter->out[0] = filter->out_coef[1] * filter->out[1] + filter->out_coef[2] * filter->out[2] + filter->in_coef[0] * filter->in[0] + filter->in_coef[1] * filter->in[1]
-			+ filter->in_coef[2] * filter->in[2];
+	filter->out[0] = filter->out_coef[1] * filter->out[1] + filter->out_coef[2] * filter->out[2] + filter->in_coef[0] * filter->in[0]
+			+ filter->in_coef[1] * filter->in[1] + filter->in_coef[2] * filter->in[2];
 
 	return filter->out[0];
 }
