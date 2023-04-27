@@ -207,9 +207,10 @@ int main(void)
 					 mpu.g.z * cos(angles.phi) * tan(angles.theta);
 
 			// calculate angle from gyro by integrating
-			float delta_theta = ((float)(HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
-			angles.theta_g = angles.theta + delta_theta;
+			angles.theta_g = angles.theta + ((float)(HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
 			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
+
+			timerMPU = HAL_GetTick();
 
 			// complementary filter
 			float alpha = 0.02;
@@ -222,13 +223,12 @@ int main(void)
 
 			printf("%f,%f,%f,%f,%f\r\n",
 				angles.theta * 180 / PI,
-				delta_theta * 180 / PI,
 				angles.theta_a * 180 / PI,
+				angles.phi * 180 / PI,
 				angles.phi_a * 180 / PI,
 				alt
 			);
 
-			timerMPU = HAL_GetTick();
 		}
 		/* USER CODE END WHILE */
 
