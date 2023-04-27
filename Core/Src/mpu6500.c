@@ -226,9 +226,9 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 	mpu->a.y = ((float) mpu->a.yraw / 32768.0f) * mpu->a.fs - mpu->a.ycalib;
 	mpu->a.z = ((float) mpu->a.zraw / 32768.0f) * mpu->a.fs - mpu->a.zcalib;
 
-	mpu->g.x = (((float) mpu->g.xraw / 32750.0f) * mpu->g.fs - mpu->g.xcalib) * DEG_TO_RAD;
-	mpu->g.y = (((float) mpu->g.yraw / 32750.0f) * mpu->g.fs - mpu->g.ycalib) * DEG_TO_RAD;
-	mpu->g.z = (((float) mpu->g.zraw / 32750.0f) * mpu->g.fs - mpu->g.zcalib) * DEG_TO_RAD;
+	mpu->g.x = (((float) mpu->g.xraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.xcalib;
+	mpu->g.y = (((float) mpu->g.yraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.ycalib;
+	mpu->g.z = (((float) mpu->g.zraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.zcalib;
 
 	return MPU_OK;
 }
