@@ -282,15 +282,6 @@ enum MPU_Status MPU_Calibrate(struct MPU_Handle *mpu)
 	mpu->g.ycalib = gyc;
 	mpu->g.zcalib = gzc;
 
-//	printf("axcalib: %f\r\n", mpu->a.xcalib);
-//	printf("aycalib: %f\r\n", mpu->a.ycalib);
-//	printf("azcalib: %f\r\n", mpu->a.zcalib);
-//	printf("az: %f\r\n", mpu->a.z);
-//
-//	printf("gxcalib: %f\r\n", mpu->g.xcalib);
-//	printf("gycalib: %f\r\n", mpu->g.ycalib);
-//	printf("gzcalib: %f\r\n", mpu->g.zcalib);
-
 	return MPU_OK;
 }
 
