@@ -429,7 +429,7 @@ int8_t bme280_init(struct bme280_dev *dev, I2C_HandleTypeDef *i2cx)
 
 	/* Check for chip id validity */
 	if (rslt == BME280_OK) {
-		if (chip_id == BME280_CHIP_ID) {
+		if (chip_id == BMP280_CHIP_ID) {
 			dev->chip_id = chip_id;
 
 			/* Reset the sensor */

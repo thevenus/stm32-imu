@@ -169,8 +169,9 @@ int main(void)
 
 	bme280_settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
 
-	bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &bme280_settings, &bme280);
-
+	bme280_set_sensor_settings(BME280_SEL_OSR_PRESS | BME280_SEL_OSR_TEMP
+				   | BME280_SEL_FILTER | BME280_SEL_STANDBY,
+				   &bme280_settings, &bme280);
 	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme280);
 	/* USER CODE END 2 */
 
@@ -287,10 +288,10 @@ int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev)
 	int8_t rslt = BME280_OK;
 	if (rslt == BME280_OK) {
 		if (base_pressure == 0.0) {
-			for (uint16_t i = 0; i < 1000; i++) {
+			for (uint16_t i = 0; i < 10000; i++) {
 				bme280_get_sensor_data(BME280_PRESS, &bme280_data, dev);
-				base_pressure += bme280_data.pressure / 1000.0;
-				LL_mDelay(2);
+				base_pressure += bme280_data.pressure / 10000.0;
+				LL_mDelay(1);
 			}
 		} else {
 //			double pres_to_alt_coef = -8781.38014;

@@ -135,6 +135,7 @@
 
 /*! @name BME280 chip identifier */
 #define BME280_CHIP_ID                            UINT8_C(0x60)
+#define BMP280_CHIP_ID                            UINT8_C(0x58)
 
 /*! @name I2C addresses */
 #define BME280_I2C_ADDR_PRIM                      UINT8_C(0x76)
