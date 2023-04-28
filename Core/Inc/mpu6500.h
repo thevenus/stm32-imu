@@ -11,6 +11,8 @@
 #include <mpu6500_reg.h>
 #include "main.h"
 
+#define MPU9250
+
 struct MPU_Data
 {
 	int16_t xraw, yraw, zraw;

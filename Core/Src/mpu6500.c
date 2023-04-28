@@ -103,7 +103,25 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 	MPU_WriteReg(mpu, MPU6500_PWR_MGMT_1, &data, 1);
 	LL_mDelay(10);
 
-	// Calibrate the sensor ======================================================
+	// Set up the magnetometer if MPU9250 ======================================
+#ifdef MPU9250
+	// Enable BYPASS mode so that STM32 can communicate
+	// with
+	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 1, MPU6500_INT_PIN_CFG_BYPASS_Msk);
+	LL_mDelay(10);
+
+	uint8_t mdata[6] = {0};
+	HAL_I2C_Mem_Read(mpu->hi2c, 0x0C<<1, 0x00, I2C_MEMADD_SIZE_8BIT, mdata, 1, HAL_MAX_DELAY);
+
+	if (mdata[0] == 0x48) {
+		mdata[0] = 0x16;
+		HAL_I2C_Mem_Write(hi2c, 0x0C<<1, 0x0A, I2C_MEMADD_SIZE_8BIT, mdata, 1, HAL_MAX_DELAY);
+	}
+
+	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 0, MPU6500_INT_PIN_CFG_BYPASS_Msk);
+	LL_mDelay(10);
+
+#endif
 
 	return MPU_OK;
 }
@@ -139,7 +157,7 @@ enum MPU_Status MPU_WriteRegBit(struct MPU_Handle *mpu, uint8_t reg_addr, uint8_
 	if (mpu == NULL)
 		return MPU_NULLPTR;
 
-	// shift the given data to the correct position on the register
+	// shift the given data to the correct position in the byte
 	uint8_t i = 0;
 	while ((mask & (1 << i)) == 0) {
 		i++;
