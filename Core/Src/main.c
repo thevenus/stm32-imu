@@ -230,7 +230,32 @@ int main(void)
 //				alt
 //			);
 
-			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
+			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
+					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
+
+			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
+			float heading;
+
+			if (heading_x < 0) {
+				 heading = PI - atan2(heading_y, heading_x);
+			} else if (heading_x > 0) {
+				if (heading_y < 0) {
+					heading = -atan2(heading_y, heading_x);
+				} else {
+					heading = 2*PI - atan2(heading_y, heading_x);
+				}
+			} else {
+				if (heading_y < 0) {
+					heading = PI/2;
+				} else {
+					heading = PI*0.75;
+				}
+
+			}
+
+			printf("%f\r\n", heading * 180.0/PI);
+
+//			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
 
 //			print_mpu_all_regs(&mpu);
 

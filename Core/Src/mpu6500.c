@@ -130,6 +130,7 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 		HAL_I2C_Mem_Write(hi2c, 0x0C<<1, 0x0A, I2C_MEMADD_SIZE_8BIT, mdata, 1, HAL_MAX_DELAY);
 	}
 
+	// Disable bypass mode
 	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 0, MPU6500_INT_PIN_CFG_BYPASS_Msk);
 	LL_mDelay(10);
 
@@ -143,7 +144,7 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 
 	// configure slave control registers
 	temp = 0x80; // I2C Slave Enable
-	temp |= 0x06; // Number of bytes to be read
+	temp |= 0x07; // Number of bytes to be read
 	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_CTRL, &temp, 1);
 
 	// enable I2C master
