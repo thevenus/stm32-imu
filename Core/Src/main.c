@@ -58,7 +58,7 @@ PUTCHAR_PROTOTYPE
 #define G_MPS2 9.81f
 
 #define LED_TOGGLE_RATE_HZ 5
-#define MPU_SAMPLE_RATE_HZ 1000
+#define MPU_SAMPLE_RATE_HZ 100
 
 /* USER CODE END PD */
 
@@ -219,16 +219,20 @@ int main(void)
 			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
 
 			// altitude estimation
-			double alt = 0;
-			bme280_get_altitude(&alt, &bme280);
+//			double alt = 0;
+//			bme280_get_altitude(&alt, &bme280);
+//
+//			printf("%f,%f,%f,%f,%f\r\n",
+//				angles.theta * 180 / PI,
+//				angles.theta_a * 180 / PI,
+//				angles.phi * 180 / PI,
+//				angles.phi_a * 180 / PI,
+//				alt
+//			);
 
-			printf("%f,%f,%f,%f,%f\r\n",
-				angles.theta * 180 / PI,
-				angles.theta_a * 180 / PI,
-				angles.phi * 180 / PI,
-				angles.phi_a * 180 / PI,
-				alt
-			);
+			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
+
+//			print_mpu_all_regs(&mpu);
 
 		}
 		/* USER CODE END WHILE */

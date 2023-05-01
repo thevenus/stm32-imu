@@ -90,6 +90,18 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 
 	mpu->hi2c = hi2c;
 
+	mpu->a.xraw = 0;
+	mpu->a.yraw = 0;
+	mpu->a.zraw = 0;
+
+	mpu->g.xraw = 0;
+	mpu->g.yraw = 0;
+	mpu->g.zraw = 0;
+
+	mpu->m.xraw = 0;
+	mpu->m.yraw = 0;
+	mpu->m.zraw = 0;
+
 	// Reset the sensor ==========================================================
 	uint8_t data = 0b10000000;
 	MPU_WriteReg(mpu, MPU6500_PWR_MGMT_1, &data, 1);
@@ -106,7 +118,7 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 	// Set up the magnetometer if MPU9250 ======================================
 #ifdef MPU9250
 	// Enable BYPASS mode so that STM32 can communicate
-	// with
+	// with AK8963 directly for set-up
 	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 1, MPU6500_INT_PIN_CFG_BYPASS_Msk);
 	LL_mDelay(10);
 
@@ -121,6 +133,22 @@ enum MPU_Status MPU_Init(struct MPU_Handle *mpu, I2C_HandleTypeDef *hi2c)
 	MPU_WriteRegBit(mpu, MPU6500_INT_PIN_CFG, 0, MPU6500_INT_PIN_CFG_BYPASS_Msk);
 	LL_mDelay(10);
 
+	// set slave address
+	uint8_t temp = 0x0C | 0x80;
+	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_ADDR, &temp, 1);
+
+	// set slave register address to read from
+	temp = 0x03;
+	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_REG, &temp, 1);
+
+	// configure slave control registers
+	temp = 0x80; // I2C Slave Enable
+	temp |= 0x06; // Number of bytes to be read
+	MPU_WriteReg(mpu, MPU6500_I2C_SLV0_CTRL, &temp, 1);
+
+	// enable I2C master
+	temp = 0x20; // set I2C_MST_EN bit
+	MPU_WriteReg(mpu, MPU6500_USER_CTRL, &temp, 1);
 #endif
 
 	return MPU_OK;
@@ -224,11 +252,10 @@ float MPU_Temp(struct MPU_Handle *mpu)
 
 enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 {
-	uint8_t data[14];
-	uint8_t start_reg = MPU6500_ACCEL_XOUT_H;
+	uint8_t data[20] = {0};
 
-	// == Read accel, gyro, and temperature data ==
-	MPU_ReadReg(mpu, start_reg, data, 14);
+	// == Read accel, gyro, magnetometer and temperature data ==
+	MPU_ReadReg(mpu, MPU6500_ACCEL_XOUT_H, data, 20);
 	mpu->a.xraw = ((int16_t) data[0] << 8) | (int16_t) data[1];
 	mpu->a.yraw = ((int16_t) data[2] << 8) | (int16_t) data[3];
 	mpu->a.zraw = ((int16_t) data[4] << 8) | (int16_t) data[5];
@@ -239,14 +266,26 @@ enum MPU_Status MPU_GetSensorData(struct MPU_Handle *mpu)
 	mpu->g.yraw = ((int16_t) data[10] << 8) | (int16_t) data[11];
 	mpu->g.zraw = ((int16_t) data[12] << 8) | (int16_t) data[13];
 
+	mpu->m.xraw = ((int16_t) data[15] << 8) | (int16_t) data[14];
+	mpu->m.yraw = ((int16_t) data[17] << 8) | (int16_t) data[16];
+	mpu->m.zraw = ((int16_t) data[19] << 8) | (int16_t) data[18];
+
 	// converting raw data into physical units
+
+	// in g units
 	mpu->a.x = ((float) mpu->a.xraw / 32768.0f) * mpu->a.fs - mpu->a.xcalib;
 	mpu->a.y = ((float) mpu->a.yraw / 32768.0f) * mpu->a.fs - mpu->a.ycalib;
 	mpu->a.z = ((float) mpu->a.zraw / 32768.0f) * mpu->a.fs - mpu->a.zcalib;
 
+	// in radians/second
 	mpu->g.x = (((float) mpu->g.xraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.xcalib;
 	mpu->g.y = (((float) mpu->g.yraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.ycalib;
 	mpu->g.z = (((float) mpu->g.zraw / 32750.0f) * mpu->g.fs) * DEG_TO_RAD - mpu->g.zcalib;
+
+	// in uT magnetic flux density
+	mpu->m.x = (float) mpu->m.xraw * 0.15 - mpu->m.xcalib;
+	mpu->m.y = (float) mpu->m.yraw * 0.15 - mpu->m.ycalib;
+	mpu->m.z = (float) mpu->m.zraw * 0.15 - mpu->m.zcalib;
 
 	return MPU_OK;
 }
