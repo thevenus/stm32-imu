@@ -137,10 +137,10 @@ int main(void)
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
 
-// wait some time for the sensors to stabilize
+	// wait some time for the sensors to stabilize
 	LL_mDelay(1000);
 
-// Setting up MPU and its filters
+	// Setting up MPU and its filters
 	struct MPU_Handle mpu;
 	MPU_Init(&mpu, &hi2c1);
 	MPU_SetAccelFS(&mpu, MPU6500_ACCEL_FS_2G);
@@ -154,7 +154,7 @@ int main(void)
 	struct IIRFilter phi_filter;
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
-// Setting up BME280
+	// Setting up BME280
 	struct bme280_dev bme280;
 	struct bme280_settings bme280_settings;
 
@@ -230,32 +230,34 @@ int main(void)
 //				alt
 //			);
 
+			mpu.m.x += 63;
+
 			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
 					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
 
 			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
-			float heading;
+			float heading = PI + atan2(heading_y, heading_x);
 
-			if (heading_x < 0) {
-				 heading = PI - atan2(heading_y, heading_x);
-			} else if (heading_x > 0) {
-				if (heading_y < 0) {
-					heading = -atan2(heading_y, heading_x);
-				} else {
-					heading = 2*PI - atan2(heading_y, heading_x);
-				}
-			} else {
-				if (heading_y < 0) {
-					heading = PI/2;
-				} else {
-					heading = PI*0.75;
-				}
 
-			}
+//			if (heading_x < 0) {
+//				 heading = PI - atan2(heading_y, heading_x);
+//			} else if (heading_x > 0) {
+//				if (heading_y < 0) {
+//					heading = -atan2(heading_y, heading_x);
+//				} else {
+//					heading = 2*PI - atan2(heading_y, heading_x);
+//				}
+//			} else {
+//				if (heading_y < 0) {
+//					heading = PI/2;
+//				} else {
+//					heading = PI*0.75;
+//				}
+//			}
 
 			printf("%f\r\n", heading * 180.0/PI);
 
-//			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
+//			printf("%f,%f,%f\r\n", mpu.m.x+63, mpu.m.y, mpu.m.z);
 
 //			print_mpu_all_regs(&mpu);
 
