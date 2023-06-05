@@ -58,7 +58,7 @@ PUTCHAR_PROTOTYPE
 #define G_MPS2 9.81f
 
 #define LED_TOGGLE_RATE_HZ 5
-#define MPU_SAMPLE_RATE_HZ 100
+#define MPU_SAMPLE_RATE_HZ 250
 
 /* USER CODE END PD */
 
@@ -197,48 +197,65 @@ int main(void)
 			angles.theta_a = -atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
 			angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
 
+			// heading - yaw calibration and estimation from magnetometer
+			float A_1[3][3] = {
+					{0.8518542, 0.01425504, 0.05116978},
+					{0.01425504, 0.89539421, 0.01930373},
+					{0.05116978, 0.01930373, 0.52186654}
+			};
+
+			float b[3] = {0.63848257, 4.42279711, -19.87603537};
+
+			mpu.m.x -= b[0];
+			mpu.m.y -= b[1];
+			mpu.m.z -= b[2];
+
+			mpu.m.x = A_1[0][0] * mpu.m.x + A_1[0][1] * mpu.m.y + A_1[0][2] * mpu.m.z;
+			mpu.m.y = A_1[1][0] * mpu.m.x + A_1[1][1] * mpu.m.y + A_1[1][2] * mpu.m.z;
+			mpu.m.z = A_1[2][0] * mpu.m.x + A_1[2][1] * mpu.m.y + A_1[2][2] * mpu.m.z;
+
+			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
+					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
+
+			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
+			angles.psi_a = PI + atan2(heading_y, heading_x);
+
 			// filter accel theta calculation
 			angles.theta_a = IIR_Update(&theta_filter, angles.theta_a);
 			angles.phi_a = IIR_Update(&phi_filter, angles.phi_a);
 
 			// convert bodyframe gyro rates into euler frame gyro rate
-			angles.theta_dot = mpu.g.y * cos(angles.phi) -
-					   mpu.g.z * sin(angles.phi);
-			angles.phi_dot = mpu.g.x + mpu.g.y * sin(angles.phi) * tan(angles.theta) +
-					 mpu.g.z * cos(angles.phi) * tan(angles.theta);
+
+			float cos_phi = cos(angles.phi);
+			float sin_phi = sin(angles.phi);
+			float tan_theta = tan(angles.theta);
+			float cos_theta = cos(angles.theta);
+
+			angles.theta_dot = mpu.g.y * cos_phi -
+					   mpu.g.z * sin_phi;
+
+			angles.phi_dot = mpu.g.x + mpu.g.y * sin_phi * tan_theta +
+					 mpu.g.z * cos_phi * tan_theta;
+
+			angles.psi_dot = mpu.g.y * sin_phi/cos_theta + mpu.g.z * cos_phi/cos_theta;
 
 			// calculate angle from gyro by integrating
 			angles.theta_g = angles.theta + ((float)(HAL_GetTick() - timerMPU) / 1000.0f) * angles.theta_dot;
 			angles.phi_g = angles.phi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.phi_dot;
+			angles.psi_g = angles.psi + ((float) (HAL_GetTick() - timerMPU) / 1000.0f) * angles.psi_dot;
 
 			timerMPU = HAL_GetTick();
+
 
 			// complementary filter
 			float alpha = 0.02;
 			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
 			angles.phi = angles.phi_a * alpha + (1 - alpha) * angles.phi_g;
+			angles.psi = angles.psi_a * alpha + (1 - alpha) * angles.psi_g;
 
 			// altitude estimation
 //			double alt = 0;
 //			bme280_get_altitude(&alt, &bme280);
-//
-//			printf("%f,%f,%f,%f,%f\r\n",
-//				angles.theta * 180 / PI,
-//				angles.theta_a * 180 / PI,
-//				angles.phi * 180 / PI,
-//				angles.phi_a * 180 / PI,
-//				alt
-//			);
-
-//			mpu.m.x += 63;
-
-//			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
-//					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
-//
-//			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
-//			float heading = PI + atan2(heading_y, heading_x);
-
-
 //			if (heading_x < 0) {
 //				 heading = PI - atan2(heading_y, heading_x);
 //			} else if (heading_x > 0) {
@@ -257,9 +274,17 @@ int main(void)
 
 //			printf("%f\r\n", heading * 180.0/PI);
 
-			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
+//			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
 
 //			print_mpu_all_regs(&mpu);
+//
+			printf("%f,%f,%f,%f,%f\r\n",
+				angles.theta * 180 / PI,
+				angles.theta_a * 180 / PI,
+				angles.phi * 180 / PI,
+				angles.phi_a * 180 / PI,
+				angles.psi * 180 / PI
+			);
 
 		}
 		/* USER CODE END WHILE */
