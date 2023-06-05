@@ -230,13 +230,13 @@ int main(void)
 //				alt
 //			);
 
-			mpu.m.x += 63;
+//			mpu.m.x += 63;
 
-			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
-					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
-
-			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
-			float heading = PI + atan2(heading_y, heading_x);
+//			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
+//					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
+//
+//			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
+//			float heading = PI + atan2(heading_y, heading_x);
 
 
 //			if (heading_x < 0) {
@@ -255,9 +255,9 @@ int main(void)
 //				}
 //			}
 
-			printf("%f\r\n", heading * 180.0/PI);
+//			printf("%f\r\n", heading * 180.0/PI);
 
-//			printf("%f,%f,%f\r\n", mpu.m.x+63, mpu.m.y, mpu.m.z);
+			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
 
 //			print_mpu_all_regs(&mpu);
 
