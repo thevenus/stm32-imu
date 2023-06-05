@@ -220,7 +220,7 @@ int main(void)
 
 			// altitude estimation
 			double alt = 0;
-			bme280_get_altitude(&alt, &bme280);
+//			bme280_get_altitude(&alt, &bme280);
 
 			printf("%f,%f,%f,%f,%f\r\n",
 				angles.theta * 180 / PI,
