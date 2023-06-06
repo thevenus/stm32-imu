@@ -78,6 +78,7 @@ struct Attitude angles = { 0 };
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev);
+void mag_calibration(struct MPU_Handle * mpu);
 
 /* USER CODE END PFP */
 
@@ -154,25 +155,25 @@ int main(void)
 	struct IIRFilter phi_filter;
 	IIR_Init(&phi_filter, 1.735, -0.766, 0.008, 0.016, 0.008); // 15 Hz
 
-	// Setting up BME280
-	struct bme280_dev bme280;
-	struct bme280_settings bme280_settings;
-
-	bme280_init(&bme280, &hi2c1);
-	bme280_get_sensor_settings(&bme280_settings, &bme280);
-
-	bme280_settings.filter = BME280_FILTER_COEFF_4;
-
-	bme280_settings.osr_p = BME280_OVERSAMPLING_16X;
-	bme280_settings.osr_t = BME280_NO_OVERSAMPLING;
-	bme280_settings.osr_h = BME280_NO_OVERSAMPLING;
-
-	bme280_settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
-
-	bme280_set_sensor_settings(BME280_SEL_OSR_PRESS | BME280_SEL_OSR_TEMP
-				   | BME280_SEL_FILTER | BME280_SEL_STANDBY,
-				   &bme280_settings, &bme280);
-	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme280);
+//	// Setting up BME280
+//	struct bme280_dev bme280;
+//	struct bme280_settings bme280_settings;
+//
+//	bme280_init(&bme280, &hi2c1);
+//	bme280_get_sensor_settings(&bme280_settings, &bme280);
+//
+//	bme280_settings.filter = BME280_FILTER_COEFF_4;
+//
+//	bme280_settings.osr_p = BME280_OVERSAMPLING_16X;
+//	bme280_settings.osr_t = BME280_NO_OVERSAMPLING;
+//	bme280_settings.osr_h = BME280_NO_OVERSAMPLING;
+//
+//	bme280_settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
+//
+//	bme280_set_sensor_settings(BME280_SEL_OSR_PRESS | BME280_SEL_OSR_TEMP
+//				   | BME280_SEL_FILTER | BME280_SEL_STANDBY,
+//				   &bme280_settings, &bme280);
+//	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &bme280);
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -193,31 +194,26 @@ int main(void)
 		if (HAL_GetTick() - timerMPU > 1000 / MPU_SAMPLE_RATE_HZ) {
 			MPU_GetSensorData(&mpu);
 
+			// do trigonometric calculations beforehand to avoid repetition
+			float cos_phi = cos(angles.phi);
+			float sin_phi = sin(angles.phi);
+			float cos_theta = cos(angles.theta);
+			float sin_theta = sin(angles.theta);
+			float tan_theta = tan(angles.theta);
+
 			// calculate pitch and roll from accel
 			angles.theta_a = -atan2(mpu.a.x, sqrt(mpu.a.y * mpu.a.y + mpu.a.z * mpu.a.z));
 			angles.phi_a = atan2(mpu.a.y, sqrt(mpu.a.x * mpu.a.x + mpu.a.z * mpu.a.z));
 
-			// heading - yaw calibration and estimation from magnetometer
-			float A_1[3][3] = {
-					{0.8518542, 0.01425504, 0.05116978},
-					{0.01425504, 0.89539421, 0.01930373},
-					{0.05116978, 0.01930373, 0.52186654}
-			};
+			mag_calibration(&mpu);
 
-			float b[3] = {0.63848257, 4.42279711, -19.87603537};
+			float heading_x = mpu.m.x * cos_phi
+					+ mpu.m.y * sin_theta * sin_phi
+					- mpu.m.z * cos_theta * sin_phi;
 
-			mpu.m.x -= b[0];
-			mpu.m.y -= b[1];
-			mpu.m.z -= b[2];
+			float heading_y = mpu.m.y * cos_theta
+					+ mpu.m.z * sin_theta;
 
-			mpu.m.x = A_1[0][0] * mpu.m.x + A_1[0][1] * mpu.m.y + A_1[0][2] * mpu.m.z;
-			mpu.m.y = A_1[1][0] * mpu.m.x + A_1[1][1] * mpu.m.y + A_1[1][2] * mpu.m.z;
-			mpu.m.z = A_1[2][0] * mpu.m.x + A_1[2][1] * mpu.m.y + A_1[2][2] * mpu.m.z;
-
-			float heading_x = mpu.m.x*cos(angles.phi) + mpu.m.y * sin(angles.theta) * sin(angles.phi)
-					- mpu.m.z * cos(angles.theta) * sin(angles.phi);
-
-			float heading_y = mpu.m.y * cos(angles.theta) + mpu.m.z * sin(angles.theta);
 			angles.psi_a = PI + atan2(heading_y, heading_x);
 
 			// filter accel theta calculation
@@ -225,12 +221,6 @@ int main(void)
 			angles.phi_a = IIR_Update(&phi_filter, angles.phi_a);
 
 			// convert bodyframe gyro rates into euler frame gyro rate
-
-			float cos_phi = cos(angles.phi);
-			float sin_phi = sin(angles.phi);
-			float tan_theta = tan(angles.theta);
-			float cos_theta = cos(angles.theta);
-
 			angles.theta_dot = mpu.g.y * cos_phi -
 					   mpu.g.z * sin_phi;
 
@@ -246,7 +236,6 @@ int main(void)
 
 			timerMPU = HAL_GetTick();
 
-
 			// complementary filter
 			float alpha = 0.02;
 			angles.theta = angles.theta_a * alpha + (1 - alpha) * angles.theta_g;
@@ -256,34 +245,13 @@ int main(void)
 			// altitude estimation
 //			double alt = 0;
 //			bme280_get_altitude(&alt, &bme280);
-//			if (heading_x < 0) {
-//				 heading = PI - atan2(heading_y, heading_x);
-//			} else if (heading_x > 0) {
-//				if (heading_y < 0) {
-//					heading = -atan2(heading_y, heading_x);
-//				} else {
-//					heading = 2*PI - atan2(heading_y, heading_x);
-//				}
-//			} else {
-//				if (heading_y < 0) {
-//					heading = PI/2;
-//				} else {
-//					heading = PI*0.75;
-//				}
-//			}
-
-//			printf("%f\r\n", heading * 180.0/PI);
-
-//			printf("%f,%f,%f\r\n", mpu.m.x, mpu.m.y, mpu.m.z);
-
-//			print_mpu_all_regs(&mpu);
-//
-			printf("%f,%f,%f,%f,%f\r\n",
+			printf("%f,%f,%f,%f,%f,%f\r\n",
 				angles.theta * 180 / PI,
 				angles.theta_a * 180 / PI,
 				angles.phi * 180 / PI,
 				angles.phi_a * 180 / PI,
-				angles.psi * 180 / PI
+				angles.psi * 180 / PI,
+				angles.psi_a * 180 / PI
 			);
 
 		}
@@ -360,6 +328,26 @@ int8_t bme280_get_altitude(double *altitude, struct bme280_dev *dev)
 
 	return rslt;
 
+}
+
+void mag_calibration(struct MPU_Handle * mpu)
+{
+	// heading - yaw calibration and estimation from magnetometer
+	float A_1[3][3] = {
+			{0.8518542, 0.01425504, 0.05116978},
+			{0.01425504, 0.89539421, 0.01930373},
+			{0.05116978, 0.01930373, 0.52186654}
+	};
+
+	float b[3] = {0.63848257, 4.42279711, -19.87603537};
+
+	mpu->m.x -= b[0];
+	mpu->m.y -= b[1];
+	mpu->m.z -= b[2];
+
+	mpu->m.x = A_1[0][0] * mpu->m.x + A_1[0][1] * mpu->m.y + A_1[0][2] * mpu->m.z;
+	mpu->m.y = A_1[1][0] * mpu->m.x + A_1[1][1] * mpu->m.y + A_1[1][2] * mpu->m.z;
+	mpu->m.z = A_1[2][0] * mpu->m.x + A_1[2][1] * mpu->m.y + A_1[2][2] * mpu->m.z;
 }
 /* USER CODE END 4 */
 
